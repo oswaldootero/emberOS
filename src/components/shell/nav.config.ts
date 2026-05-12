@@ -13,6 +13,7 @@ import {
   Search,
   Settings,
   Users,
+  UserCog,
 } from "lucide-react";
 
 export type NavItem = {
@@ -21,6 +22,7 @@ export type NavItem = {
   icon: LucideIcon;
   badge?: string;
   description?: string;
+  adminOnly?: boolean;
 };
 
 export type NavSection = {
@@ -118,6 +120,13 @@ export const navigation: NavSection[] = [
         href: "/workflows",
         icon: Workflow,
         description: "Automation pipelines",
+      },
+      {
+        label: "Team",
+        href: "/settings/team",
+        icon: UserCog,
+        description: "Invite-only access",
+        adminOnly: true,
       },
       {
         label: "Settings",

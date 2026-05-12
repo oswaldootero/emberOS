@@ -7,14 +7,24 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, ShieldAlert } from "lucide-react";
+
+const ERRORS: Record<string, string> = {
+  not_invited:
+    "That email isn't on the team yet. Ask an admin to invite you, then try again.",
+  auth_failed: "Sign-in failed. The link may be expired — request a new one.",
+  missing_code: "Sign-in link was incomplete. Request a new one.",
+};
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const router = useRouter();
-  const next = useSearchParams().get("next") || "/dashboard";
+  const params = useSearchParams();
+  const next = params.get("next") || "/dashboard";
+  const errKey = params.get("error");
+  const errMsg = errKey ? ERRORS[errKey] : null;
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +74,12 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleMagicLink} className="space-y-4">
+      {errMsg && (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 flex gap-2 items-start text-xs text-ivory">
+          <ShieldAlert className="h-4 w-4 text-amber-300 shrink-0 mt-0.5" />
+          <span>{errMsg}</span>
+        </div>
+      )}
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input

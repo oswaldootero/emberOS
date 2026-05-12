@@ -7,7 +7,7 @@ import { navigation } from "./nav.config";
 import { cn } from "@/lib/utils";
 import { Flame } from "lucide-react";
 
-export function Sidebar() {
+export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -30,13 +30,16 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        {navigation.map((section) => (
+        {navigation.map((section) => {
+          const visible = section.items.filter((i) => !i.adminOnly || isAdmin);
+          if (visible.length === 0) return null;
+          return (
           <div key={section.label} className="space-y-1.5">
             <div className="px-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
               {section.label}
             </div>
             <ul className="space-y-0.5">
-              {section.items.map((item) => {
+              {visible.map((item) => {
                 const active =
                   pathname === item.href ||
                   (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -77,7 +80,8 @@ export function Sidebar() {
               })}
             </ul>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Footer */}
