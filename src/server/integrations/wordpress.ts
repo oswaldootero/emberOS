@@ -119,7 +119,7 @@ export async function uploadFeaturedImage(
         "Content-Disposition": `attachment; filename="${filename}"`,
         Authorization: basicAuth(),
       },
-      body: buffer,
+      body: new Uint8Array(buffer),
     });
     const body = await res.json();
     if (!res.ok) {
