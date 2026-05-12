@@ -1,0 +1,638 @@
+// =============================================================
+// EmberOS — Prisma Schema
+// AI-powered media operating system for Heaven's Leaf
+// =============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// -----------------------------
+// Enums
+// -----------------------------
+
+enum Role {
+  ADMIN
+  CONTENT_CREATOR
+  COMMUNITY_MANAGER
+  AMBASSADOR
+}
+
+enum Platform {
+  INSTAGRAM
+  FACEBOOK
+  TELEGRAM
+  YOUTUBE
+  X_TWITTER
+  WORDPRESS
+  EMAIL
+  WOOCOMMERCE
+  WEB
+}
+
+enum ContentType {
+  CAPTION
+  BLOG_POST
+  DEVOTIONAL
+  TELEGRAM_POST
+  SEO_ARTICLE
+  EMAIL_NEWSLETTER
+  VIDEO_HOOK
+  PODCAST_OUTLINE
+  QUOTE_GRAPHIC
+  CAROUSEL
+  SHORT_FORM
+  STORY
+}
+
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+  REJECTED
+}
+
+enum ScheduledStatus {
+  QUEUED
+  PROCESSING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+  AUDIO
+  PDF
+  LOGO
+  GRAPHIC
+  TRANSCRIPT
+}
+
+enum AIJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum WorkflowTrigger {
+  CONTENT_PUBLISHED
+  MANUAL
+  SCHEDULED
+  TELEGRAM_MESSAGE
+  WEBHOOK
+  RSS_UPDATE
+}
+
+enum CampaignStatus {
+  PLANNING
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+// -----------------------------
+// Identity
+// -----------------------------
+
+model User {
+  id              String   @id @default(cuid())
+  supabaseId      String?  @unique
+  email           String   @unique
+  fullName        String?
+  displayName     String?
+  avatarUrl       String?
+  role            Role     @default(CONTENT_CREATOR)
+  bio             String?
+  timezone        String   @default("America/Los_Angeles")
+  lastSeenAt      DateTime?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  contentPieces       ContentPiece[]      @relation("AuthoredContent")
+  approvedContent     ContentPiece[]      @relation("ApprovedContent")
+  scheduledPosts      ScheduledPost[]
+  aiJobs              AIJob[]
+  workflows           Workflow[]
+  workflowExecutions  WorkflowExecution[]
+  assets              Asset[]
+  promptTemplates     PromptTemplate[]
+  brandVoices         BrandVoice[]
+  campaigns           Campaign[]
+  auditLogs           AuditLog[]
+
+  @@index([role])
+  @@index([supabaseId])
+}
+
+// -----------------------------
+// Brand Voice Memory
+// -----------------------------
+
+model BrandVoice {
+  id                  String   @id @default(cuid())
+  name                String
+  description         String?
+  isDefault           Boolean  @default(false)
+
+  // Tone descriptors stored as JSON for flexibility
+  toneDescriptors     Json     // ["reflective", "premium", "brotherhood-oriented", ...]
+  approvedPhrases     String[] @default([])
+  forbiddenPhrases    String[] @default([])
+  theologicalGuard    String[] @default([])
+  formattingRules     Json?    // e.g. {"emDash": true, "emojiPolicy": "minimal"}
+  emotionalPositioning String? @db.Text
+  exampleVoiceSamples Json?    // [{title, body}]
+
+  // Vector embedding for semantic recall (pgvector extension)
+  embedding           Unsupported("vector(3072)")?
+
+  createdBy           User?    @relation(fields: [createdById], references: [id])
+  createdById         String?
+
+  contentPieces       ContentPiece[]
+  campaigns           Campaign[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([isDefault])
+}
+
+// -----------------------------
+// Content
+// -----------------------------
+
+model ContentPiece {
+  id              String        @id @default(cuid())
+  title           String
+  slug            String?       @unique
+  type            ContentType
+  status          ContentStatus @default(DRAFT)
+
+  body            String        @db.Text
+  excerpt         String?       @db.Text
+  metadata        Json?         // {tone, goals, ctaIntensity, etc.}
+
+  author          User          @relation("AuthoredContent", fields: [authorId], references: [id])
+  authorId        String
+
+  approvedBy      User?         @relation("ApprovedContent", fields: [approvedById], references: [id])
+  approvedById    String?
+  approvedAt      DateTime?
+
+  brandVoice      BrandVoice?   @relation(fields: [brandVoiceId], references: [id])
+  brandVoiceId    String?
+
+  campaign        Campaign?     @relation(fields: [campaignId], references: [id])
+  campaignId      String?
+
+  variants        ContentVariant[]
+  scheduledPosts  ScheduledPost[]
+  assets          ContentAsset[]
+  seoKeywords     ContentKeyword[]
+
+  // Safety / compliance scoring
+  shadowbanScore  Float?        // 0..1, lower = safer
+  complianceFlags Json?         // [{flag, severity, suggestion}]
+
+  // AI provenance
+  aiGenerated     Boolean       @default(false)
+  aiJobId         String?       @unique
+  aiJob           AIJob?        @relation(fields: [aiJobId], references: [id])
+
+  embedding       Unsupported("vector(3072)")?
+
+  publishedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([authorId])
+  @@index([campaignId])
+}
+
+model ContentVariant {
+  id              String       @id @default(cuid())
+  parent          ContentPiece @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId        String
+
+  platform        Platform
+  body            String       @db.Text
+  hashtags        String[]     @default([])
+  metadata        Json?
+  characterCount  Int?
+
+  shadowbanScore  Float?
+  complianceFlags Json?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([parentId, platform])
+}
+
+// -----------------------------
+// Campaigns
+// -----------------------------
+
+model Campaign {
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  description     String?        @db.Text
+  status          CampaignStatus @default(PLANNING)
+  goalSummary     String?        @db.Text
+  startDate       DateTime?
+  endDate         DateTime?
+  theme           String?
+  colorAccent     String?        // hex for calendar grouping
+
+  brandVoice      BrandVoice?    @relation(fields: [brandVoiceId], references: [id])
+  brandVoiceId    String?
+
+  owner           User           @relation(fields: [ownerId], references: [id])
+  ownerId         String
+
+  contentPieces   ContentPiece[]
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([status])
+}
+
+// -----------------------------
+// Platform Connections
+// -----------------------------
+
+model PlatformConnection {
+  id              String   @id @default(cuid())
+  platform        Platform
+  label           String
+  accountHandle   String?
+  isActive        Boolean  @default(true)
+
+  // Encrypted credential blob (encrypted at rest via app layer)
+  credentials     Json
+  scopes          String[] @default([])
+  tokenExpiresAt  DateTime?
+
+  scheduledPosts  ScheduledPost[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([platform, accountHandle])
+  @@index([platform])
+}
+
+// -----------------------------
+// Scheduling
+// -----------------------------
+
+model ScheduledPost {
+  id                String          @id @default(cuid())
+  content           ContentPiece    @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  contentId         String
+
+  platform          Platform
+  connection        PlatformConnection? @relation(fields: [connectionId], references: [id])
+  connectionId      String?
+
+  scheduledFor      DateTime
+  status            ScheduledStatus @default(QUEUED)
+  qstashMessageId   String?
+  externalPostId    String?         // ID returned from platform
+  externalUrl       String?
+
+  payload           Json            // Final rendered payload sent to platform
+  errorMessage      String?         @db.Text
+  attempts          Int             @default(0)
+  publishedAt       DateTime?
+
+  createdBy         User            @relation(fields: [createdById], references: [id])
+  createdById       String
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([scheduledFor, status])
+  @@index([platform])
+}
+
+// -----------------------------
+// Telegram
+// -----------------------------
+
+model TelegramMember {
+  id              String   @id @default(cuid())
+  telegramId      String   @unique
+  username        String?
+  firstName       String?
+  lastName        String?
+  isBot           Boolean  @default(false)
+  isAmbassador    Boolean  @default(false)
+
+  joinedAt        DateTime @default(now())
+  leftAt          DateTime?
+
+  messageCount    Int      @default(0)
+  reactionCount   Int      @default(0)
+  contributionScore Float  @default(0)
+  lastActivityAt  DateTime?
+
+  messages        TelegramMessage[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([username])
+  @@index([isAmbassador])
+}
+
+model TelegramMessage {
+  id              String   @id @default(cuid())
+  telegramMsgId   String
+  chatId          String
+
+  member          TelegramMember? @relation(fields: [memberId], references: [id])
+  memberId        String?
+
+  text            String?  @db.Text
+  hasMedia        Boolean  @default(false)
+  replyToId       String?
+  threadId        String?
+
+  reactions       Json?    // {emoji: count}
+  metadata        Json?
+
+  sentAt          DateTime
+  createdAt       DateTime @default(now())
+
+  @@unique([chatId, telegramMsgId])
+  @@index([sentAt])
+  @@index([memberId])
+}
+
+model CommunityEvent {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?  @db.Text
+  location        String?
+  locationLat     Float?
+  locationLng     Float?
+  startsAt        DateTime
+  endsAt          DateTime?
+  rsvpUrl         String?
+  isDSA           Boolean  @default(false) // Dazos Smoking Association event
+  imageUrl        String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([startsAt])
+}
+
+// -----------------------------
+// Analytics
+// -----------------------------
+
+model AnalyticsSnapshot {
+  id              String   @id @default(cuid())
+  platform        Platform
+  capturedAt      DateTime @default(now())
+  periodStart     DateTime
+  periodEnd       DateTime
+
+  // Flexible metric storage
+  metrics         Json     // {impressions, reach, engagement, ctr, ...}
+  audience        Json?    // demographics snapshot
+  topContentIds   String[] @default([])
+
+  @@index([platform, periodStart])
+}
+
+// -----------------------------
+// Assets
+// -----------------------------
+
+model Asset {
+  id              String     @id @default(cuid())
+  filename        String
+  storagePath     String     @unique // path in Supabase Storage
+  publicUrl       String?
+  mimeType        String
+  byteSize        Int
+  type            AssetType
+  width           Int?
+  height          Int?
+  durationSec     Int?
+  altText         String?
+  caption         String?
+  tags            String[]   @default([])
+
+  uploadedBy      User       @relation(fields: [uploadedById], references: [id])
+  uploadedById    String
+
+  contentAssets   ContentAsset[]
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([type])
+  @@index([uploadedById])
+}
+
+model ContentAsset {
+  contentId  String
+  assetId    String
+  position   Int          @default(0)
+  role       String?      // "hero", "carousel-1", etc.
+
+  content    ContentPiece @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  asset      Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([contentId, assetId])
+  @@index([contentId])
+}
+
+// -----------------------------
+// SEO
+// -----------------------------
+
+model SEOKeyword {
+  id              String   @id @default(cuid())
+  keyword         String   @unique
+  cluster         String?
+  intent          String?  // informational | commercial | transactional | navigational
+  searchVolume    Int?
+  difficulty      Float?
+  currentRank     Int?
+  previousRank    Int?
+  lastCheckedAt   DateTime?
+  targetUrl       String?
+  notes           String?  @db.Text
+
+  contentLinks    ContentKeyword[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([cluster])
+}
+
+model ContentKeyword {
+  contentId  String
+  keywordId  String
+  isPrimary  Boolean      @default(false)
+
+  content    ContentPiece @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  keyword    SEOKeyword   @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@id([contentId, keywordId])
+  @@index([keywordId])
+}
+
+// -----------------------------
+// AI
+// -----------------------------
+
+model PromptTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  description     String?
+  category        String   // caption | blog | devotional | telegram | seo | repurpose
+  systemPrompt    String   @db.Text
+  userPromptTpl   String   @db.Text
+  variables       Json     // [{name, type, default}]
+  defaultModel    String?
+  defaultTemp     Float?   @default(0.7)
+  isActive        Boolean  @default(true)
+  version         Int      @default(1)
+
+  createdBy       User?    @relation(fields: [createdById], references: [id])
+  createdById     String?
+
+  jobs            AIJob[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+}
+
+model AIJob {
+  id              String      @id @default(cuid())
+  status          AIJobStatus @default(PENDING)
+  model           String
+  template        PromptTemplate? @relation(fields: [templateId], references: [id])
+  templateId      String?
+
+  input           Json
+  output          Json?
+  rawText         String?     @db.Text
+  errorMessage    String?     @db.Text
+
+  // Token + cost tracking
+  promptTokens    Int?
+  completionTokens Int?
+  totalTokens     Int?
+  costUsd         Decimal?    @db.Decimal(10, 6)
+  durationMs      Int?
+
+  triggeredBy     User?       @relation(fields: [triggeredById], references: [id])
+  triggeredById   String?
+
+  content         ContentPiece?
+
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime    @default(now())
+
+  @@index([status])
+  @@index([triggeredById])
+}
+
+// -----------------------------
+// Workflows
+// -----------------------------
+
+model Workflow {
+  id              String           @id @default(cuid())
+  name            String
+  description     String?          @db.Text
+  trigger         WorkflowTrigger
+  triggerConfig   Json?            // {event: "content.published", filter: {...}}
+  steps           Json             // ordered array of step nodes
+  isActive        Boolean          @default(true)
+
+  owner           User             @relation(fields: [ownerId], references: [id])
+  ownerId         String
+
+  executions      WorkflowExecution[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([trigger])
+  @@index([isActive])
+}
+
+model WorkflowExecution {
+  id              String      @id @default(cuid())
+  workflow        Workflow    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowId      String
+
+  status          AIJobStatus @default(PENDING)
+  triggerPayload  Json?
+  stepLog         Json?       // [{stepIndex, status, output, ms}]
+  errorMessage    String?     @db.Text
+
+  triggeredBy     User?       @relation(fields: [triggeredById], references: [id])
+  triggeredById   String?
+
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime    @default(now())
+
+  @@index([workflowId, status])
+}
+
+// -----------------------------
+// Audit
+// -----------------------------
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  actor           User?    @relation(fields: [actorId], references: [id])
+  actorId         String?
+
+  action          String   // "content.created" | "post.scheduled" | ...
+  entityType      String?
+  entityId        String?
+  diff            Json?
+  ip              String?
+  userAgent       String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+}

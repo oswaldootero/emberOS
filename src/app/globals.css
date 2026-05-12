@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* EmberOS — Dark Luxury (default, always dark) */
+    --background: 240 16% 4%;       /* near matte black */
+    --foreground: 38 50% 92%;       /* warm ivory */
+
+    --card: 240 14% 6%;
+    --card-foreground: 38 50% 92%;
+
+    --popover: 240 14% 6%;
+    --popover-foreground: 38 50% 92%;
+
+    --primary: 38 60% 50%;          /* muted gold */
+    --primary-foreground: 240 16% 6%;
+
+    --secondary: 240 8% 14%;
+    --secondary-foreground: 38 30% 88%;
+
+    --muted: 240 8% 12%;
+    --muted-foreground: 38 14% 64%;
+
+    --accent: 28 35% 22%;           /* dark tobacco brown */
+    --accent-foreground: 38 50% 90%;
+
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 8% 14%;
+    --input: 240 8% 14%;
+    --ring: 38 60% 50%;
+
+    --radius: 0.625rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-ink-950 text-ivory antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(198, 148, 55, 0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(122, 77, 38, 0.06), transparent);
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+
+  ::selection {
+    background: rgba(198, 148, 55, 0.35);
+    color: hsl(var(--foreground));
+  }
+
+  /* Subtle film grain on body */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.025;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/></svg>");
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-ink-850/70 backdrop-blur-xl border border-white/[0.04];
+  }
+
+  .glass-strong {
+    @apply bg-ink-850/90 backdrop-blur-2xl border border-white/[0.06];
+  }
+
+  .surface {
+    @apply bg-gradient-to-b from-ink-850 to-ink-900 border border-white/[0.05] rounded-xl;
+  }
+
+  .surface-elevated {
+    @apply surface shadow-cinematic;
+  }
+
+  .text-gold {
+    @apply bg-gradient-to-br from-ember-100 via-ember-300 to-ember-500 bg-clip-text text-transparent;
+  }
+
+  .divider-gold {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(198, 148, 55, 0.35) 50%,
+      transparent 100%
+    );
+    height: 1px;
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.06) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(198, 148, 55, 0.25);
+  background-clip: content-box;
+}

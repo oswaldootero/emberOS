@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/daily-reflection",
+      "schedule": "0 14 * * *"
+    }
+  ],
+  "functions": {
+    "src/app/api/ai/generate/route.ts": { "maxDuration": 60 },
+    "src/app/api/ai/repurpose/route.ts": { "maxDuration": 120 }
+  }
+}
