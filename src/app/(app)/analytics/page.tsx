@@ -32,6 +32,7 @@ import {
 } from "@/components/analytics/charts";
 import { cn, compactNumber, relativeTime } from "@/lib/utils";
 import { getInternalAnalytics, type AnalyticsRange } from "@/server/analytics";
+import { isPostHogConfigured } from "@/lib/posthog/server";
 
 export const metadata = { title: "Analytics" };
 export const dynamic = "force-dynamic";
@@ -382,19 +383,15 @@ export default async function AnalyticsPage({
         </CardContent>
       </Card>
 
+      <PostHogPanel />
       <Card className="bg-ink-900/40 border-dashed">
         <CardContent className="p-5 flex items-center gap-3 text-xs text-muted-foreground">
           <TrendingUp className="h-4 w-4 text-ember-300/70 shrink-0" />
           <span>
-            Add <strong className="text-ivory">PostHog</strong> (in-app analytics) +{" "}
-            <strong className="text-ivory">Google Search Console</strong> (SEO
-            performance) +{" "}
-            <strong className="text-ivory">Meta / YouTube</strong> (social
-            performance) for the full picture. See the
-            <Link href="/settings" className="text-ember-300 underline ml-1">
-              Settings
-            </Link>{" "}
-            page for status.
+            Next up:{" "}
+            <strong className="text-ivory">Google Search Console</strong> for SEO
+            impressions + clicks, then <strong className="text-ivory">Meta / YouTube</strong> for
+            social. See <Link href="/settings" className="text-ember-300 underline">Settings</Link> for status.
           </span>
         </CardContent>
       </Card>
@@ -490,6 +487,71 @@ function EmptyHint({ label }: { label: string }) {
   return (
     <div className="text-xs text-muted-foreground italic py-4 text-center">
       {label}
+    </div>
+  );
+}
+
+function PostHogPanel() {
+  const configured = isPostHogConfigured();
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-ember-300" />
+            Product Analytics · PostHog
+          </CardTitle>
+          <CardDescription>
+            User-level engagement, funnels, retention, session replays.
+          </CardDescription>
+        </div>
+        <Badge
+          variant={configured ? "success" : "outline"}
+          className="text-[10px]"
+        >
+          {configured ? "Capturing" : "Not connected"}
+        </Badge>
+      </CardHeader>
+      <CardContent>
+        {configured ? (
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Events fire to your PostHog project for every meaningful action.
+              View funnels, cohorts, and replays in the PostHog dashboard.
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 text-[11px]">
+              <EventChip name="$pageview" hint="Every route change" />
+              <EventChip name="ai.generate" hint="Studio generation" />
+              <EventChip name="ai.image" hint="Image generation" />
+              <EventChip name="ai.repurpose" hint="Repurpose Engine" />
+              <EventChip name="wordpress.publish" hint="Article shipped" />
+              <EventChip name="team.invite" hint="Member added" />
+            </div>
+            <a
+              href={process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.posthog.com"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-ember-300 hover:underline mt-1"
+            >
+              Open PostHog dashboard →
+            </a>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Set NEXT_PUBLIC_POSTHOG_KEY + NEXT_PUBLIC_POSTHOG_HOST in Vercel and
+            redeploy without cache to start capturing.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EventChip({ name, hint }: { name: string; hint: string }) {
+  return (
+    <div className="rounded-md border border-white/[0.05] bg-ink-900/40 px-2.5 py-1.5">
+      <code className="text-ember-200 text-[11px]">{name}</code>
+      <div className="text-[10px] text-muted-foreground">{hint}</div>
     </div>
   );
 }

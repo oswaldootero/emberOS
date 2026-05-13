@@ -10,6 +10,7 @@ import { checkRate } from "@/lib/rate-limit";
 import { getSessionUser } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/server/audit";
+import { captureServer, flushPostHog } from "@/lib/posthog/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,6 +118,18 @@ export async function POST(req: NextRequest) {
               entityId: jobId,
               diff: { type: reqData.type, model },
             });
+            captureServer(user?.id, "ai.generate", {
+              contentType: reqData.type,
+              platform: reqData.platform,
+              emotionalTone: reqData.emotionalTone,
+              ctaIntensity: reqData.ctaIntensity,
+              model,
+              promptTokens,
+              completionTokens,
+              totalTokens: promptTokens + completionTokens,
+              costUsd: estimateCostUsd(model, promptTokens, completionTokens),
+            });
+            await flushPostHog();
           } catch {
             // ignore
           }

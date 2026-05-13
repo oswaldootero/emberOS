@@ -3,6 +3,7 @@ import { repurposeContent, RepurposeRequestSchema } from "@/server/ai/repurpose"
 import { checkRate } from "@/lib/rate-limit";
 import { getSessionUser } from "@/lib/supabase/server";
 import { audit } from "@/server/audit";
+import { captureServer, flushPostHog } from "@/lib/posthog/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,14 @@ export async function POST(req: NextRequest) {
       actorId: user?.id ?? null,
       diff: { sourceType: parsed.data.sourceType, ...result.meta },
     });
+    captureServer(user?.id, "ai.repurpose", {
+      sourceType: parsed.data.sourceType,
+      sourceLength: parsed.data.source.length,
+      model: result.meta.model,
+      totalTokens: result.meta.totalTokens,
+      costUsd: result.meta.costUsd,
+    });
+    await flushPostHog();
     return Response.json(result);
   } catch (err) {
     console.error("[ai.repurpose] failed:", err);
