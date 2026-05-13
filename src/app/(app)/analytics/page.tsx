@@ -8,8 +8,12 @@ import {
   CheckCircle2,
   Coins,
   Database,
+  Eye,
   FileText,
   Globe,
+  MousePointerClick,
+  Search,
+  Smartphone,
   Sparkles,
   TrendingUp,
   Users,
@@ -26,13 +30,14 @@ import { Badge } from "@/components/ui/badge";
 import {
   AICostLine,
   AIUsageTimeseries,
+  AudienceTimeseries,
   ContentTypePie,
   PlatformStackedBars,
+  SearchPerformanceTimeseries,
   TelegramTimeseries,
 } from "@/components/analytics/charts";
 import { cn, compactNumber, relativeTime } from "@/lib/utils";
 import { getInternalAnalytics, type AnalyticsRange } from "@/server/analytics";
-import { isPostHogConfigured } from "@/lib/posthog/server";
 
 export const metadata = { title: "Analytics" };
 export const dynamic = "force-dynamic";
@@ -95,6 +100,12 @@ export default async function AnalyticsPage({
           hint="across all models"
         />
       </div>
+
+      {/* Audience (GA4) */}
+      <AudiencePanel ga4={a.ga4} range={range} />
+
+      {/* Search performance (GSC) */}
+      <SearchPanel gsc={a.gsc} />
 
       {/* AI usage */}
       <Card>
@@ -383,15 +394,17 @@ export default async function AnalyticsPage({
         </CardContent>
       </Card>
 
-      <PostHogPanel />
       <Card className="bg-ink-900/40 border-dashed">
         <CardContent className="p-5 flex items-center gap-3 text-xs text-muted-foreground">
           <TrendingUp className="h-4 w-4 text-ember-300/70 shrink-0" />
           <span>
-            Next up:{" "}
-            <strong className="text-ivory">Google Search Console</strong> for SEO
-            impressions + clicks, then <strong className="text-ivory">Meta / YouTube</strong> for
-            social. See <Link href="/settings" className="text-ember-300 underline">Settings</Link> for status.
+            Connect <strong className="text-ivory">Google Analytics 4</strong> +{" "}
+            <strong className="text-ivory">Google Search Console</strong> for
+            audience + SEO data. See{" "}
+            <Link href="/settings" className="text-ember-300 underline">
+              Settings
+            </Link>{" "}
+            for status.
           </span>
         </CardContent>
       </Card>
@@ -491,67 +504,275 @@ function EmptyHint({ label }: { label: string }) {
   );
 }
 
-function PostHogPanel() {
-  const configured = isPostHogConfigured();
+function AudiencePanel({
+  ga4,
+  range,
+}: {
+  ga4: import("@/server/analytics").AnalyticsSnapshot["ga4"];
+  range: number;
+}) {
+  if (!ga4.connected) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-ember-300" />
+            Audience · Google Analytics 4
+          </CardTitle>
+          <CardDescription>
+            Visitors to heavensleaf.com. Connect GA4 to light this up.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-2">
+          {ga4.reason ? (
+            <p>
+              Couldn't reach GA4: <code className="text-amber-300">{ga4.reason}</code>
+            </p>
+          ) : (
+            <p>
+              Set <code className="text-ember-200">GOOGLE_CLIENT_EMAIL</code>,{" "}
+              <code className="text-ember-200">GOOGLE_PRIVATE_KEY</code>, and{" "}
+              <code className="text-ember-200">GA4_PROPERTY_ID</code> in Vercel,
+              then grant the service account Viewer access on your GA4 property.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+  const t = ga4.totals;
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-ember-300" />
-            Product Analytics · PostHog
+            <Users className="h-4 w-4 text-ember-300" />
+            Audience · Google Analytics 4
           </CardTitle>
           <CardDescription>
-            User-level engagement, funnels, retention, session replays.
+            Visitors to heavensleaf.com over the last {range} days.
           </CardDescription>
         </div>
-        <Badge
-          variant={configured ? "success" : "outline"}
-          className="text-[10px]"
-        >
-          {configured ? "Capturing" : "Not connected"}
+        <Badge variant="success" className="text-[10px]">
+          live · GA4
         </Badge>
       </CardHeader>
-      <CardContent>
-        {configured ? (
-          <div className="space-y-3 text-sm">
-            <p className="text-muted-foreground">
-              Events fire to your PostHog project for every meaningful action.
-              View funnels, cohorts, and replays in the PostHog dashboard.
-            </p>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 text-[11px]">
-              <EventChip name="$pageview" hint="Every route change" />
-              <EventChip name="ai.generate" hint="Studio generation" />
-              <EventChip name="ai.image" hint="Image generation" />
-              <EventChip name="ai.repurpose" hint="Repurpose Engine" />
-              <EventChip name="wordpress.publish" hint="Article shipped" />
-              <EventChip name="team.invite" hint="Member added" />
-            </div>
-            <a
-              href={process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.posthog.com"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-ember-300 hover:underline mt-1"
-            >
-              Open PostHog dashboard →
-            </a>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatusPill label="Visitors" value={t.activeUsers} />
+          <StatusPill label="New" value={t.newUsers} />
+          <StatusPill label="Sessions" value={t.sessions} />
+          <StatusPill label="Page views" value={t.pageViews} />
+        </div>
+        <AudienceTimeseries data={ga4.timeseries} />
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div>
+            <SectionLabel icon={Eye} text="Top pages" />
+            {ga4.topPages.length === 0 ? (
+              <EmptyHint label="No page-view data yet." />
+            ) : (
+              <ul className="divide-y divide-white/[0.04]">
+                {ga4.topPages.slice(0, 6).map((p) => (
+                  <li key={p.path} className="py-2 flex items-center gap-3 text-sm">
+                    <span className="flex-1 min-w-0 truncate text-ivory">
+                      {p.title ?? p.path}
+                    </span>
+                    <span className="text-muted-foreground tabular-nums text-xs">
+                      {p.views.toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Set NEXT_PUBLIC_POSTHOG_KEY + NEXT_PUBLIC_POSTHOG_HOST in Vercel and
-            redeploy without cache to start capturing.
-          </p>
-        )}
+          <div>
+            <SectionLabel icon={Globe} text="Top sources" />
+            {ga4.topSources.length === 0 ? (
+              <EmptyHint label="No source data yet." />
+            ) : (
+              <ul className="divide-y divide-white/[0.04]">
+                {ga4.topSources.slice(0, 6).map((s) => (
+                  <li
+                    key={`${s.source}-${s.medium}`}
+                    className="py-2 flex items-center gap-3 text-sm"
+                  >
+                    <span className="flex-1 truncate text-ivory">{s.source}</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {s.medium || "—"}
+                    </Badge>
+                    <span className="text-muted-foreground tabular-nums text-xs">
+                      {s.users.toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <SectionLabel icon={Smartphone} text="Countries + devices" />
+            <div className="space-y-3">
+              <ul className="space-y-1.5">
+                {ga4.topCountries.slice(0, 4).map((c) => (
+                  <li
+                    key={c.country}
+                    className="flex items-center gap-3 text-sm"
+                  >
+                    <span className="flex-1 truncate text-ivory">{c.country}</span>
+                    <span className="text-muted-foreground tabular-nums text-xs">
+                      {c.users.toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="pt-2 border-t border-white/[0.05]">
+                {ga4.devices.map((d) => (
+                  <div
+                    key={d.category}
+                    className="flex items-center gap-3 text-xs py-1"
+                  >
+                    <span className="capitalize text-muted-foreground flex-1">
+                      {d.category}
+                    </span>
+                    <span className="text-ivory tabular-nums">
+                      {d.users.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function EventChip({ name, hint }: { name: string; hint: string }) {
+function SearchPanel({
+  gsc,
+}: {
+  gsc: import("@/server/analytics").AnalyticsSnapshot["gsc"];
+}) {
+  if (!gsc.connected) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-ember-300" />
+            Search Performance · Google Search Console
+          </CardTitle>
+          <CardDescription>
+            How people find heavensleaf.com on Google. Connect GSC to light this
+            up.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          {gsc.reason ? (
+            <p>
+              Couldn't reach GSC: <code className="text-amber-300">{gsc.reason}</code>
+            </p>
+          ) : (
+            <p>
+              Set <code className="text-ember-200">GOOGLE_CLIENT_EMAIL</code>,{" "}
+              <code className="text-ember-200">GOOGLE_PRIVATE_KEY</code>, and{" "}
+              <code className="text-ember-200">GSC_SITE_URL</code> in Vercel, then
+              grant the service account access in Search Console.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+  const t = gsc.totals;
   return (
-    <div className="rounded-md border border-white/[0.05] bg-ink-900/40 px-2.5 py-1.5">
-      <code className="text-ember-200 text-[11px]">{name}</code>
-      <div className="text-[10px] text-muted-foreground">{hint}</div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-ember-300" />
+            Search Performance · GSC
+          </CardTitle>
+          <CardDescription>
+            Impressions, clicks, and rankings from Google search.
+          </CardDescription>
+        </div>
+        <Badge variant="success" className="text-[10px]">
+          live · GSC
+        </Badge>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatusPill label="Impressions" value={t.impressions} />
+          <StatusPill label="Clicks" value={t.clicks} />
+          <StatusPill
+            label="Avg CTR"
+            value={Number((t.ctr * 100).toFixed(2))}
+          />
+          <StatusPill
+            label="Avg position"
+            value={Number(t.position.toFixed(1))}
+          />
+        </div>
+        <SearchPerformanceTimeseries data={gsc.timeseries} />
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div>
+            <SectionLabel icon={MousePointerClick} text="Top queries" />
+            <ul className="divide-y divide-white/[0.04]">
+              {gsc.topQueries.slice(0, 8).map((q) => (
+                <li key={q.query} className="py-2 grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-sm">
+                  <span className="truncate text-ivory">{q.query}</span>
+                  <span className="text-muted-foreground tabular-nums text-xs">
+                    {q.impressions.toLocaleString()}
+                  </span>
+                  <Badge variant="outline" className="text-[10px] tabular-nums">
+                    {q.clicks} clicks
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                    #{q.position.toFixed(1)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <SectionLabel icon={FileText} text="Top pages" />
+            <ul className="divide-y divide-white/[0.04]">
+              {gsc.topPages.slice(0, 8).map((p) => (
+                <li key={p.page} className="py-2 flex items-center gap-3 text-sm">
+                  <a
+                    href={p.page}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 truncate text-ivory hover:text-ember-200"
+                  >
+                    {new URL(p.page).pathname}
+                  </a>
+                  <span className="text-muted-foreground tabular-nums text-xs">
+                    {p.impressions.toLocaleString()}
+                  </span>
+                  <Badge variant="outline" className="text-[10px] tabular-nums">
+                    {p.clicks} clicks
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionLabel({
+  icon: Icon,
+  text,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  text: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+      <Icon className="h-3 w-3" />
+      {text}
     </div>
   );
 }

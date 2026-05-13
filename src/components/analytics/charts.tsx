@@ -186,6 +186,113 @@ export function ContentTypePie({
   );
 }
 
+export function AudienceTimeseries({
+  data,
+}: {
+  data: { date: string; users: number; sessions: number; pageViews: number }[];
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <AreaChart data={data} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+        <defs>
+          <linearGradient id="gradUsers" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#e3b04f" stopOpacity={0.5} />
+            <stop offset="100%" stopColor="#e3b04f" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="gradPV" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#7f5f3b" stopOpacity={0.35} />
+            <stop offset="100%" stopColor="#7f5f3b" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <XAxis
+          dataKey="date"
+          stroke="rgba(255,255,255,0.3)"
+          fontSize={10}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={formatDay}
+        />
+        <YAxis
+          stroke="rgba(255,255,255,0.3)"
+          fontSize={10}
+          tickLine={false}
+          axisLine={false}
+        />
+        <Tooltip contentStyle={TOOLTIP} labelFormatter={formatDay} />
+        <Area
+          type="monotone"
+          dataKey="pageViews"
+          stroke="#7f5f3b"
+          strokeWidth={1.5}
+          fill="url(#gradPV)"
+        />
+        <Area
+          type="monotone"
+          dataKey="users"
+          stroke="#e3b04f"
+          strokeWidth={2}
+          fill="url(#gradUsers)"
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function SearchPerformanceTimeseries({
+  data,
+}: {
+  data: { date: string; clicks: number; impressions: number }[];
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={200}>
+      <LineChart data={data} margin={{ top: 6, right: 8, left: -16, bottom: 0 }}>
+        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <XAxis
+          dataKey="date"
+          stroke="rgba(255,255,255,0.3)"
+          fontSize={10}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={formatDay}
+        />
+        <YAxis
+          yAxisId="left"
+          stroke="rgba(255,255,255,0.3)"
+          fontSize={10}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          stroke="rgba(255,255,255,0.3)"
+          fontSize={10}
+          tickLine={false}
+          axisLine={false}
+        />
+        <Tooltip contentStyle={TOOLTIP} labelFormatter={formatDay} />
+        <Line
+          yAxisId="left"
+          type="monotone"
+          dataKey="impressions"
+          stroke="#7f5f3b"
+          strokeWidth={1.5}
+          dot={false}
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="clicks"
+          stroke="#e3b04f"
+          strokeWidth={2}
+          dot={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function TelegramTimeseries({
   data,
 }: {

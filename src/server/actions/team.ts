@@ -5,7 +5,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth";
 import { audit } from "@/server/audit";
-import { captureServer } from "@/lib/posthog/server";
 
 const InviteSchema = z.object({
   email: z.string().email().toLowerCase(),
@@ -45,7 +44,6 @@ export async function inviteUser(input: unknown): Promise<ActionResult> {
     entityType: "User",
     diff: { email, role },
   });
-  captureServer(admin.id, "team.invite", { role });
 
   revalidatePath("/settings/team");
   return {

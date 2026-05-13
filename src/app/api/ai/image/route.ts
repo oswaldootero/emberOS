@@ -5,7 +5,6 @@ import { getSessionUser } from "@/lib/supabase/server";
 import { audit } from "@/server/audit";
 import { prisma } from "@/lib/prisma";
 import { estimateCostUsd } from "@/lib/openai";
-import { captureServer, flushPostHog } from "@/lib/posthog/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,14 +64,6 @@ export async function POST(req: NextRequest) {
         promptLength: parsed.data.prompt.length,
       },
     });
-    captureServer(user?.id, "ai.image", {
-      size: parsed.data.size,
-      quality: parsed.data.quality,
-      promptLength: parsed.data.prompt.length,
-      costUsd: estimateImageCost(parsed.data.size, parsed.data.quality),
-      durationMs,
-    });
-    await flushPostHog();
 
     return Response.json({
       dataUrl: image.dataUrl,

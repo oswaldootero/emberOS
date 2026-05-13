@@ -54,12 +54,15 @@ const schema = z.object({
   YOUTUBE_CHANNEL_ID: optStr,
   YOUTUBE_OAUTH_REFRESH_TOKEN: optStr,
 
-  GSC_CLIENT_EMAIL: optStr,
-  GSC_PRIVATE_KEY: optStr,
-  GSC_SITE_URL: optUrl,
+  // Shared Google service-account credentials (used by both GA4 + GSC)
+  GOOGLE_CLIENT_EMAIL: optStr,
+  GOOGLE_PRIVATE_KEY: optStr,
 
-  NEXT_PUBLIC_POSTHOG_KEY: optStr,
-  NEXT_PUBLIC_POSTHOG_HOST: optUrl,
+  // GA4 (Google Analytics 4 — audience analytics for heavensleaf.com)
+  GA4_PROPERTY_ID: optStr,
+
+  // GSC (Google Search Console — SEO performance)
+  GSC_SITE_URL: optUrl,
 
   CRON_SECRET: optStr,
   INTERNAL_API_TOKEN: optStr,
@@ -115,12 +118,10 @@ const raw = {
   YOUTUBE_CHANNEL_ID: process.env.YOUTUBE_CHANNEL_ID,
   YOUTUBE_OAUTH_REFRESH_TOKEN: process.env.YOUTUBE_OAUTH_REFRESH_TOKEN,
 
-  GSC_CLIENT_EMAIL: process.env.GSC_CLIENT_EMAIL,
-  GSC_PRIVATE_KEY: process.env.GSC_PRIVATE_KEY,
+  GOOGLE_CLIENT_EMAIL: process.env.GOOGLE_CLIENT_EMAIL,
+  GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY,
+  GA4_PROPERTY_ID: process.env.GA4_PROPERTY_ID,
   GSC_SITE_URL: process.env.GSC_SITE_URL,
-
-  NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
-  NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
 
   CRON_SECRET: process.env.CRON_SECRET,
   INTERNAL_API_TOKEN: process.env.INTERNAL_API_TOKEN,

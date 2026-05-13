@@ -5,7 +5,6 @@ import { z } from "zod";
 import { marked } from "marked";
 import { requireUser } from "@/server/auth";
 import { audit } from "@/server/audit";
-import { captureServer, flushPostHog } from "@/lib/posthog/server";
 import {
   publishArticle,
   isConfigured,
@@ -107,11 +106,6 @@ export async function publishToWordPress(
       actorId: user.id,
       diff: { title: d.title, error: result.error.code },
     });
-    captureServer(user.id, "wordpress.publish_failed", {
-      status: d.status,
-      errorCode: result.error.code,
-    });
-    await flushPostHog();
     return { ok: false, error: result.error.message };
   }
 
@@ -126,14 +120,6 @@ export async function publishToWordPress(
       hasFeaturedImage: Boolean(featuredMediaId),
     },
   });
-  captureServer(user.id, "wordpress.publish", {
-    status: d.status,
-    bodyFormat: d.bodyFormat,
-    wordCount: d.body.split(/\s+/).filter(Boolean).length,
-    hasFeaturedImage: Boolean(featuredMediaId),
-    hasYoastMeta: Boolean(d.yoastTitle || d.yoastDescription || d.yoastFocusKeyword),
-  });
-  await flushPostHog();
 
   revalidatePath("/wordpress");
   return {
