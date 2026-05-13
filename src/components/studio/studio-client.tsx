@@ -1,17 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
   Loader2,
   Copy,
-  CheckCircle2,
   ShieldCheck,
   ShieldAlert,
   Wand2,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
+import { setWordPressHandoff } from "@/lib/handoff";
 import {
   Card,
   CardContent,
@@ -162,6 +164,37 @@ export function StudioClient({ templates }: { templates: Template[] }) {
     await navigator.clipboard.writeText(output);
     toast.success("Copied to clipboard.");
   }
+
+  const router = useRouter();
+
+  function sendToWordPress() {
+    if (!output) return;
+    // Heuristic: derive a title from the first non-empty line, strip markdown #s
+    const firstLine = output
+      .split("\n")
+      .map((l) => l.trim())
+      .find((l) => l.length > 0) ?? "";
+    const derivedTitle = firstLine.replace(/^#+\s*/, "").slice(0, 200);
+
+    setWordPressHandoff({
+      title: derivedTitle,
+      body: output,
+      bodyFormat:
+        type === "blog_post" || type === "seo_article" || type === "devotional"
+          ? "markdown"
+          : "markdown",
+      excerpt: topic.slice(0, 200),
+      yoastFocusKeyword:
+        type === "seo_article" ? topic.split(/\s+/).slice(0, 4).join(" ") : undefined,
+    });
+    router.push("/wordpress/new");
+  }
+
+  const isLongForm =
+    type === "blog_post" ||
+    type === "seo_article" ||
+    type === "devotional" ||
+    type === "email_newsletter";
 
   return (
     <div className="grid lg:grid-cols-[1fr_1.4fr] gap-6">
@@ -338,8 +371,18 @@ export function StudioClient({ templates }: { templates: Template[] }) {
                   : "Awaiting a spark."}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {safety && <SafetyBadge safety={safety} />}
+            {output && isLongForm && (
+              <Button
+                variant="gold"
+                size="sm"
+                onClick={sendToWordPress}
+                disabled={isStreaming}
+              >
+                <Globe className="h-3.5 w-3.5" /> Send to WordPress
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"

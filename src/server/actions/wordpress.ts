@@ -5,7 +5,11 @@ import { z } from "zod";
 import { marked } from "marked";
 import { requireUser } from "@/server/auth";
 import { audit } from "@/server/audit";
-import { publishArticle, isConfigured } from "@/server/integrations/wordpress";
+import {
+  publishArticle,
+  isConfigured,
+  uploadFeaturedImage,
+} from "@/server/integrations/wordpress";
 
 const PublishSchema = z
   .object({
@@ -19,10 +23,16 @@ const PublishSchema = z
       .regex(/^[a-z0-9-]*$/i, "Slug can only contain letters, numbers, hyphens")
       .optional(),
     status: z.enum(["draft", "publish", "future"]).default("draft"),
-    scheduledFor: z.string().optional(), // ISO datetime
+    scheduledFor: z.string().optional(),
     yoastTitle: z.string().max(80).optional(),
     yoastDescription: z.string().max(160).optional(),
     yoastFocusKeyword: z.string().max(80).optional(),
+    /** Base64 data URL (data:image/png;base64,...) — uploaded to WP and attached as featured media */
+    featuredImageDataUrl: z
+      .string()
+      .startsWith("data:image/")
+      .optional(),
+    featuredImageAlt: z.string().max(180).optional(),
   })
   .refine(
     (v) => v.status !== "future" || (v.scheduledFor && v.scheduledFor.length > 0),
@@ -57,6 +67,22 @@ export async function publishToWordPress(
   }
 
   const d = parsed.data;
+
+  // If a generated image was attached, upload it to WP media first
+  let featuredMediaId: number | undefined;
+  if (d.featuredImageDataUrl) {
+    const upload = await uploadDataUrlAsFeaturedMedia(
+      d.featuredImageDataUrl,
+      d.title,
+    );
+    if (!upload.ok) {
+      // Don't fail the whole publish on image upload error — fall through with a warning toast
+      console.error("[wp.publish] featured image upload failed:", upload.error);
+    } else {
+      featuredMediaId = upload.mediaId;
+    }
+  }
+
   const contentHtml =
     d.bodyFormat === "markdown" ? await marked.parse(d.body) : d.body;
 
@@ -67,6 +93,7 @@ export async function publishToWordPress(
     slug: d.slug || undefined,
     status: d.status,
     date: d.status === "future" ? d.scheduledFor : undefined,
+    featuredMediaId,
     yoastMeta: {
       title: d.yoastTitle,
       description: d.yoastDescription,
@@ -86,7 +113,12 @@ export async function publishToWordPress(
     actorId: user.id,
     entityType: "WordPressPost",
     entityId: result.value.externalPostId,
-    diff: { title: d.title, status: d.status, slug: d.slug },
+    diff: {
+      title: d.title,
+      status: d.status,
+      slug: d.slug,
+      hasFeaturedImage: Boolean(featuredMediaId),
+    },
   });
 
   revalidatePath("/wordpress");
@@ -95,4 +127,30 @@ export async function publishToWordPress(
     postId: result.value.externalPostId,
     url: result.value.externalUrl ?? "",
   };
+}
+
+async function uploadDataUrlAsFeaturedMedia(
+  dataUrl: string,
+  title: string,
+): Promise<{ ok: true; mediaId: number } | { ok: false; error: string }> {
+  const match = dataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+  if (!match) return { ok: false, error: "Invalid image data URL" };
+  const [, mimeType, base64] = match;
+  const buffer = Buffer.from(base64, "base64");
+
+  const ext = mimeType.split("/")[1]?.replace("+xml", "") ?? "png";
+  const safeTitle =
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 50) || "emberos-hero";
+
+  const result = await uploadFeaturedImage(
+    `${safeTitle}-${Date.now()}.${ext}`,
+    buffer,
+    mimeType,
+  );
+  if (!result.ok) return { ok: false, error: result.error.message };
+  return { ok: true, mediaId: result.value.id };
 }
