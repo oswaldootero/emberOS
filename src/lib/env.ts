@@ -65,7 +65,68 @@ const schema = z.object({
   INTERNAL_API_TOKEN: optStr,
 });
 
-const parsed = schema.safeParse(process.env);
+// IMPORTANT: Next.js only inlines NEXT_PUBLIC_* vars when accessed by literal
+// name (e.g. process.env.NEXT_PUBLIC_FOO). Passing `process.env` as an object
+// to safeParse loses every value on the client bundle. We MUST enumerate each
+// key by literal access here.
+const raw = {
+  NODE_ENV: process.env.NODE_ENV,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+
+  DATABASE_URL: process.env.DATABASE_URL,
+  DIRECT_URL: process.env.DIRECT_URL,
+
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET,
+
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  OPENAI_MODEL_PRIMARY: process.env.OPENAI_MODEL_PRIMARY,
+  OPENAI_MODEL_FAST: process.env.OPENAI_MODEL_FAST,
+  OPENAI_EMBEDDING_MODEL: process.env.OPENAI_EMBEDDING_MODEL,
+
+  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+  QSTASH_TOKEN: process.env.QSTASH_TOKEN,
+  QSTASH_CURRENT_SIGNING_KEY: process.env.QSTASH_CURRENT_SIGNING_KEY,
+  QSTASH_NEXT_SIGNING_KEY: process.env.QSTASH_NEXT_SIGNING_KEY,
+
+  TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+  TELEGRAM_BOT_USERNAME: process.env.TELEGRAM_BOT_USERNAME,
+  TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,
+  TELEGRAM_DEFAULT_CHAT_ID: process.env.TELEGRAM_DEFAULT_CHAT_ID,
+
+  WORDPRESS_URL: process.env.WORDPRESS_URL,
+  WORDPRESS_USERNAME: process.env.WORDPRESS_USERNAME,
+  WORDPRESS_APP_PASSWORD: process.env.WORDPRESS_APP_PASSWORD,
+
+  WOOCOMMERCE_URL: process.env.WOOCOMMERCE_URL,
+  WOOCOMMERCE_CONSUMER_KEY: process.env.WOOCOMMERCE_CONSUMER_KEY,
+  WOOCOMMERCE_CONSUMER_SECRET: process.env.WOOCOMMERCE_CONSUMER_SECRET,
+
+  META_APP_ID: process.env.META_APP_ID,
+  META_APP_SECRET: process.env.META_APP_SECRET,
+  META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN,
+  META_INSTAGRAM_BUSINESS_ID: process.env.META_INSTAGRAM_BUSINESS_ID,
+  META_FACEBOOK_PAGE_ID: process.env.META_FACEBOOK_PAGE_ID,
+
+  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
+  YOUTUBE_CHANNEL_ID: process.env.YOUTUBE_CHANNEL_ID,
+  YOUTUBE_OAUTH_REFRESH_TOKEN: process.env.YOUTUBE_OAUTH_REFRESH_TOKEN,
+
+  GSC_CLIENT_EMAIL: process.env.GSC_CLIENT_EMAIL,
+  GSC_PRIVATE_KEY: process.env.GSC_PRIVATE_KEY,
+  GSC_SITE_URL: process.env.GSC_SITE_URL,
+
+  NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+  NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+
+  CRON_SECRET: process.env.CRON_SECRET,
+  INTERNAL_API_TOKEN: process.env.INTERNAL_API_TOKEN,
+};
+
+const parsed = schema.safeParse(raw);
 
 if (!parsed.success && process.env.NODE_ENV === "production") {
   console.error(
@@ -76,7 +137,7 @@ if (!parsed.success && process.env.NODE_ENV === "production") {
 
 export const env = parsed.success
   ? parsed.data
-  : (process.env as unknown as z.infer<typeof schema>);
+  : (raw as unknown as z.infer<typeof schema>);
 
 export function requireEnv<K extends keyof typeof env>(
   key: K,
