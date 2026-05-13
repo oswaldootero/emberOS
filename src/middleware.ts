@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/api/cron",
   "/api/webhooks",
   "/api/scheduling",
+  "/api/debug", // diagnostic endpoint — remove after setup
 ];
 
 export async function middleware(req: NextRequest) {
