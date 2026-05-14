@@ -13,7 +13,7 @@ import {
   Globe,
 } from "lucide-react";
 import { toast } from "sonner";
-import { setWordPressHandoff } from "@/lib/handoff";
+import { setWordPressHandoff, consumeStudioHandoff } from "@/lib/handoff";
 import {
   Card,
   CardContent,
@@ -82,7 +82,20 @@ export function StudioClient({ templates }: { templates: Template[] }) {
     badge: "safe" | "watch" | "risky";
     flags: { flag: string; severity: string; suggestion: string }[];
   } | null>(null);
+  const [inspiredBy, setInspiredBy] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Consume Studio handoff from /analytics on mount — pre-fill topic
+  // with a proven top performer as creative inspiration.
+  useEffect(() => {
+    const h = consumeStudioHandoff();
+    if (!h) return;
+    setTopic(
+      `Write in the spirit of this proven piece — keep its tone and theme, but make it fresh:\n\n"${h.inspiration}"`,
+    );
+    setInspiredBy(h.sourceLabel);
+    if (h.suggestedType) setType(h.suggestedType as ContentTypeKey);
+  }, []);
 
   // Run safety analysis on output (debounced)
   useEffect(() => {
@@ -231,11 +244,32 @@ export function StudioClient({ templates }: { templates: Template[] }) {
 
           <div className="space-y-2">
             <Label>Topic / seed thought</Label>
+            {inspiredBy && (
+              <div className="flex items-start gap-2 rounded-md border border-ember-500/30 bg-ember-500/5 p-2 text-[11px]">
+                <Sparkles className="h-3.5 w-3.5 text-ember-300 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="text-ember-200 font-medium">
+                    Inspired by your top performer
+                  </div>
+                  <div className="text-muted-foreground">{inspiredBy}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInspiredBy(null);
+                    setTopic("");
+                  }}
+                  className="text-muted-foreground hover:text-ivory text-[10px] underline"
+                >
+                  clear
+                </button>
+              </div>
+            )}
             <Textarea
               placeholder="e.g. The first cigar I shared with my father after he forgave me"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              rows={3}
+              rows={inspiredBy ? 6 : 3}
             />
           </div>
 

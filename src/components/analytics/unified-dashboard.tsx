@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   CheckCircle2,
@@ -15,6 +16,7 @@ import {
   TrendingUp,
   UploadCloud,
   Users,
+  Wand2,
 } from "lucide-react";
 import {
   Card,
@@ -27,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChannelReachBars, ReachOverlayChart } from "./charts";
 import { cn, compactNumber, relativeTime } from "@/lib/utils";
+import { setStudioHandoff } from "@/lib/handoff";
 import type {
   UnifiedDashboard as UnifiedDashboardData,
 } from "@/server/analytics/dashboard";
@@ -179,51 +182,21 @@ export function UnifiedDashboard({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Crown className="h-4 w-4 text-ember-300" />
-            What's working — top performers across every channel
+            What's resonating with your community
           </CardTitle>
           <CardDescription>
-            Ranked by primary engagement metric (clicks, engagement, views).
+            These pieces earned the most attention this period. Each one
+            carries something worth amplifying — tap{" "}
+            <span className="text-ember-200 font-medium">Riff on this</span>{" "}
+            to bring it into the Studio and write more in its spirit.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ul className="divide-y divide-white/[0.04]">
+          <div className="space-y-3">
             {data.topPerformers.map((p, i) => (
-              <li
-                key={`${p.source}-${i}`}
-                className="py-2.5 flex items-center gap-3 text-sm"
-              >
-                <span className="w-5 text-xs text-muted-foreground font-mono tabular-nums">
-                  {i + 1}.
-                </span>
-                <SourceBadge source={p.source} />
-                {p.url ? (
-                  <a
-                    href={normalizeUrl(p.url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 min-w-0 truncate text-ivory hover:text-ember-200 inline-flex items-center gap-1"
-                  >
-                    {p.label}
-                    <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
-                  </a>
-                ) : (
-                  <span className="flex-1 truncate text-ivory">{p.label}</span>
-                )}
-                <span className="text-[11px] text-ember-200 tabular-nums shrink-0">
-                  {compactNumber(p.primaryMetric)}{" "}
-                  <span className="text-muted-foreground">
-                    {p.primaryMetricLabel}
-                  </span>
-                </span>
-                {p.secondaryMetric !== null && (
-                  <span className="hidden sm:inline text-[10px] text-muted-foreground tabular-nums shrink-0">
-                    · {compactNumber(p.secondaryMetric)}{" "}
-                    {p.secondaryMetricLabel}
-                  </span>
-                )}
-              </li>
+              <TopPerformerCard key={`${p.source}-${i}`} performer={p} />
             ))}
-          </ul>
+          </div>
         </CardContent>
       </Card>
 
@@ -249,6 +222,119 @@ export function UnifiedDashboard({
       </Card>
     </div>
   );
+}
+
+function TopPerformerCard({
+  performer,
+}: {
+  performer: import("@/server/analytics/dashboard").TopPerformer;
+}) {
+  const router = useRouter();
+
+  function riff() {
+    setStudioHandoff({
+      inspiration: performer.label,
+      sourceLabel: `${sourceLabel(performer.source)} · ${compactNumber(performer.primaryMetric)} ${performer.primaryMetricLabel}`,
+      suggestedType: suggestedContentType(performer),
+    });
+    router.push("/studio");
+  }
+
+  const sentence = conversationalLine(performer);
+
+  return (
+    <div className="rounded-lg border border-white/[0.05] bg-ink-900/40 p-4 hover:border-ember-500/30 transition group">
+      <div className="flex items-start gap-3">
+        <SourceBadge source={performer.source} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-ivory leading-relaxed">{sentence}</p>
+          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              variant="gold"
+              size="sm"
+              onClick={riff}
+              className="h-7 text-[11px]"
+            >
+              <Wand2 className="h-3 w-3" /> Riff on this in Studio
+            </Button>
+            {performer.url && (
+              <Button variant="outline" size="sm" asChild className="h-7 text-[11px]">
+                <a
+                  href={normalizeUrl(performer.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-3 w-3" /> Open original
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function sourceLabel(source: string): string {
+  return (
+    {
+      INSTAGRAM: "Top Instagram post",
+      FACEBOOK: "Top Facebook post",
+      GSC: "Top search query",
+      GA4: "Top page",
+    }[source] ?? "Top performer"
+  );
+}
+
+/**
+ * Map a top performer back to a Content Studio content type so the
+ * "Riff on this" handoff lands on something the Studio can actually generate.
+ */
+function suggestedContentType(
+  performer: import("@/server/analytics/dashboard").TopPerformer,
+): string {
+  if (performer.type === "post") return "caption";
+  if (performer.type === "query") return "seo_article";
+  if (performer.type === "page") return "blog_post";
+  if (performer.type === "video") return "video_hook";
+  return "caption";
+}
+
+/**
+ * Translate a numeric ranking row into something a brand operator would
+ * actually read out loud. Keeps the "human concierge" voice instead of
+ * dashboard-speak.
+ */
+function conversationalLine(
+  p: import("@/server/analytics/dashboard").TopPerformer,
+): string {
+  const metric = `${compactNumber(p.primaryMetric)} ${p.primaryMetricLabel}`;
+  const secondary =
+    p.secondaryMetric !== null
+      ? ` (${compactNumber(p.secondaryMetric)} ${p.secondaryMetricLabel})`
+      : "";
+  const label = p.label.length > 110 ? p.label.slice(0, 107) + "…" : p.label;
+
+  switch (p.source) {
+    case "INSTAGRAM":
+      return p.type === "post"
+        ? `On Instagram, "${label}" earned ${metric}${secondary} — your community leaned in.`
+        : `"${label}" pulled ${metric}${secondary} on Instagram.`;
+    case "FACEBOOK":
+      return p.type === "post"
+        ? `Over on Facebook, "${label}" landed ${metric}${secondary}.`
+        : `"${label}" earned ${metric}${secondary} on Facebook.`;
+    case "GSC":
+      if (p.type === "query") {
+        return `People are finding you through "${label}" — ${metric}${secondary} from Google search.`;
+      }
+      return `The page "${label}" pulled ${metric}${secondary} from search.`;
+    case "GA4":
+      return `On the site, "${label}" drew ${metric}${secondary}.`;
+    default:
+      return `"${label}" — ${metric}${secondary}.`;
+  }
 }
 
 function Kpi({
