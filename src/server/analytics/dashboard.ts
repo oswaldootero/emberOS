@@ -20,8 +20,10 @@ export type UnifiedDashboard = {
   // Combined top performers (top items from every source, normalized)
   topPerformers: TopPerformer[];
 
-  // Trend overlay (last 30 days, daily) — only filled if Meta overview imports exist
+  // Trend overlay (last 30 days, daily) — filled from Meta Content imports
+  // (per-post publish dates) or Meta Overview imports (account-level daily).
   reachTrend: ReachTrendPoint[];
+  reachTrendSource: "overview" | "content" | "mixed" | "none";
 
   // Per-source freshness
   freshness: FreshnessEntry[];
@@ -281,6 +283,8 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
   const trendMap = new Map<string, ReachTrendPoint>();
   const igTrendSource = igOverview ?? igContent;
   const fbTrendSource = fbOverview ?? fbContent;
+  const igKind = igOverview ? "overview" : igContent ? "content" : null;
+  const fbKind = fbOverview ? "overview" : fbContent ? "content" : null;
 
   if (igTrendSource?.timeseries) {
     for (const r of igTrendSource.timeseries) {
@@ -303,6 +307,13 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
   const reachTrend = Array.from(trendMap.values()).sort((a, b) =>
     a.date.localeCompare(b.date),
   );
+
+  const reachTrendSource: UnifiedDashboard["reachTrendSource"] =
+    !igKind && !fbKind
+      ? "none"
+      : igKind && fbKind && igKind !== fbKind
+        ? "mixed"
+        : (igKind ?? fbKind ?? "none");
 
   // -----------------------
   // Freshness
@@ -355,6 +366,7 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
     channels,
     topPerformers: performers,
     reachTrend,
+    reachTrendSource,
     freshness,
     highlight,
   };
@@ -414,6 +426,7 @@ function emptyDashboard(): UnifiedDashboard {
     channels: [],
     topPerformers: [],
     reachTrend: [],
+    reachTrendSource: "none",
     freshness: [],
     highlight: null,
   };

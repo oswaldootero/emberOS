@@ -116,12 +116,10 @@ export function UnifiedDashboard({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-ember-300" />
-              Daily reach overlay
+              {trendChartTitle(data.reachTrendSource)}
             </CardTitle>
             <CardDescription>
-              {data.reachTrend.length > 0
-                ? "Daily reach across platforms — overlay shows where momentum is shifting."
-                : "Import an Instagram or Facebook Content insights CSV (or Account overview) to fill this in."}
+              {trendChartDescription(data.reachTrendSource, data.reachTrend.length > 0)}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -131,11 +129,10 @@ export function UnifiedDashboard({
                 <div className="flex items-center gap-4 text-[11px] text-muted-foreground mt-2">
                   <LegendDot color="#e3b04f" label="Instagram" />
                   <LegendDot color="#a8845a" label="Facebook" />
-                  <LegendDot color="#7f5f3b" label="Web" dashed />
                 </div>
               </>
             ) : (
-              <EmptyChart label="No overview imports yet." />
+              <EmptyChart label="No Meta Content imports yet — upload one to fill this in." />
             )}
           </CardContent>
         </Card>
@@ -383,6 +380,37 @@ function EmptyChart({ label }: { label: string }) {
       {label}
     </div>
   );
+}
+
+function trendChartTitle(
+  source: "overview" | "content" | "mixed" | "none",
+): string {
+  switch (source) {
+    case "overview":
+      return "Daily account reach";
+    case "content":
+      return "Daily reach from published posts";
+    case "mixed":
+      return "Daily reach (mixed sources)";
+    default:
+      return "Daily reach";
+  }
+}
+
+function trendChartDescription(
+  source: "overview" | "content" | "mixed" | "none",
+  hasData: boolean,
+): string {
+  if (!hasData) {
+    return "Upload an Instagram or Facebook Content insights CSV to fill this chart.";
+  }
+  if (source === "content") {
+    return "Sum of post reach by publish date — shows when your content lands hardest.";
+  }
+  if (source === "overview") {
+    return "Account-level daily reach pulled from your Meta Insights overview.";
+  }
+  return "Daily reach across Meta channels.";
 }
 
 function normalizeUrl(url: string): string {
