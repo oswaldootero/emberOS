@@ -89,6 +89,17 @@ enum AIJobStatus {
   CANCELLED
 }
 
+enum AnalyticsSource {
+  GA4
+  GSC
+  INSTAGRAM
+  FACEBOOK
+  YOUTUBE
+  TIKTOK
+  EMAIL
+  CUSTOM
+}
+
 enum WorkflowTrigger {
   CONTENT_PUBLISHED
   MANUAL
@@ -135,6 +146,7 @@ model User {
   brandVoices         BrandVoice[]
   campaigns           Campaign[]
   auditLogs           AuditLog[]
+  analyticsImports    AnalyticsImport[]
 
   @@index([role])
   @@index([supabaseId])
@@ -427,6 +439,35 @@ model AnalyticsSnapshot {
   topContentIds   String[] @default([])
 
   @@index([platform, periodStart])
+}
+
+// User-uploaded CSV imports from external analytics platforms (GA4, GSC,
+// Meta Business Suite, etc). Each import is one CSV file representing a
+// specific report type and date window.
+model AnalyticsImport {
+  id            String          @id @default(cuid())
+  source        AnalyticsSource
+  reportType    String          // ga4_traffic_acquisition, gsc_queries, instagram_content, etc.
+  label         String?         // user-provided friendly name
+  filename      String
+
+  periodStart   DateTime?
+  periodEnd     DateTime?
+  rowCount      Int             @default(0)
+
+  // Normalized data shape — see src/server/analytics/imports.ts
+  totals        Json            // {clicks, impressions, users, reach, ...}
+  timeseries    Json            // [{date, metric1, metric2, ...}]
+  topEntities   Json            // [{name, url, metric1, metric2, ...}]
+  metadata      Json?           // {columnsDetected, warnings, ...}
+
+  uploadedBy    User            @relation(fields: [uploadedById], references: [id])
+  uploadedById  String
+
+  createdAt     DateTime        @default(now())
+
+  @@index([source, periodEnd])
+  @@index([uploadedById])
 }
 
 // -----------------------------

@@ -9,6 +9,7 @@
   "functions": {
     "src/app/api/ai/generate/route.ts": { "maxDuration": 60 },
     "src/app/api/ai/repurpose/route.ts": { "maxDuration": 120 },
-    "src/app/api/ai/image/route.ts": { "maxDuration": 90 }
+    "src/app/api/ai/image/route.ts": { "maxDuration": 90 },
+    "src/app/api/ai/insights/route.ts": { "maxDuration": 60 }
   }
 }

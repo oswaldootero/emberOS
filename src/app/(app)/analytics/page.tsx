@@ -14,6 +14,7 @@ import {
   Search,
   Sparkles,
   TrendingUp,
+  UploadCloud,
   Users,
   Youtube,
   Instagram,
@@ -28,6 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   AICostLine,
   AIUsageTimeseries,
@@ -37,6 +39,8 @@ import {
 } from "@/components/analytics/charts";
 import { cn, compactNumber, relativeTime } from "@/lib/utils";
 import { getInternalAnalytics, type AnalyticsRange } from "@/server/analytics";
+import { getLatestImports } from "@/server/analytics/imports";
+import { ImportedDataPanels } from "@/components/analytics/imported-panels";
 
 export const metadata = { title: "Analytics" };
 export const dynamic = "force-dynamic";
@@ -57,17 +61,28 @@ export default async function AnalyticsPage({
     ? Number(params.range)
     : 30) as AnalyticsRange;
 
-  const a = await getInternalAnalytics(range);
+  const [a, imports] = await Promise.all([
+    getInternalAnalytics(range),
+    getLatestImports(),
+  ]);
 
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Analytics"
         title="What's resonating, and why."
-        description="Live metrics across AI usage, content, scheduling, WordPress, and the Telegram brotherhood."
+        description="Imported data from your channels, AI insights about what's working, and live internal metrics — all in one place."
       >
         <RangeSwitcher current={range} />
+        <Button variant="gold" size="sm" asChild>
+          <Link href="/analytics/import">
+            <UploadCloud className="h-4 w-4" /> Import CSV
+          </Link>
+        </Button>
       </PageHeader>
+
+      {/* Imported analytics + AI insights */}
+      <ImportedDataPanels imports={imports} />
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
