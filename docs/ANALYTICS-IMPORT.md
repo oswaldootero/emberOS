@@ -72,43 +72,115 @@ The other files (`Countries.csv`, `Devices.csv`, `Search appearance.csv`, `Dates
 
 ---
 
-## Instagram (Meta Business Suite)
+## Instagram + Facebook (Meta Business Suite)
 
-### Step-by-step
+Both Instagram and Facebook live in the same tool — Meta Business Suite. The export flow is the same, you just switch which account is selected at the top.
+
+### Prerequisites (one-time check)
+
+You need:
+
+1. A **Facebook Page** for Heaven's Leaf
+2. An **Instagram Business Account** (not a personal account) connected to that Page
+3. Admin / Editor access to both
+
+If you're not sure, open <https://business.facebook.com> — if you can see your accounts there, you're set. If not, you need to:
+
+- **Convert IG to Business** — Instagram app → Settings → Account → Switch to Professional Account
+- **Connect IG to your FB Page** — Page Settings → Linked Accounts → Instagram → Connect
+
+### Instagram content export
+
+Gives you **per-post data**: reach, impressions, reactions, comments, shares, saves, permalink.
 
 1. Open <https://business.facebook.com/latest/insights>
-2. Top-left: confirm your **Instagram account** is selected (toggle between IG and FB pages if needed)
-3. Set date range (top-right)
-4. Pick a tab:
+   - Sign in with the Facebook account that admins your Heaven's Leaf Page
+2. **Top-left dropdown** — make sure your **Instagram account** is selected
+3. **Left sidebar → Content**
+4. **Top filter row:**
+   - Set date range (top-right corner — e.g., "Last 7 days" or "Last 28 days")
+   - Optionally filter **Format** to Posts / Reels / Stories if you only want one type
+5. **Top-right corner → ⋯ menu → Export**
+   - If you don't see "Export," look for a **down-arrow icon** or **Download** label
+6. **Choose CSV format**
 
-   | Tab | Upload as |
-   |---|---|
-   | **Content** | `Content insights (posts / reels)` |
-   | **Overview** | `Account overview` |
+File downloads as something like `instagram-content-YYYY-MM-DD.csv`.
 
-5. **⋯ menu (top-right) → Export data → CSV**
+**Upload in EmberOS:**
 
-### What you get
+- Source: **Instagram (Meta Business Suite)**
+- Report type: **Content insights (posts / reels)**
 
-**Content insights** CSV has one row per post with columns like Post ID, Caption, Publish time, Reach, Impressions, Reactions, Comments, Shares, Saves, Permalink.
+### Facebook content export
 
-**Account overview** CSV has daily time-series data: Date, Reach, Impressions, Followers, Profile visits, Website clicks.
+Same tool, switch to the Facebook Page.
 
-### Notes
+1. <https://business.facebook.com/latest/insights>
+2. **Top-left dropdown** — switch to your **Facebook Page**
+3. **Left sidebar → Content**
+4. Set date range top-right
+5. **⋯ menu → Export → CSV**
 
-- Meta Business Suite is the same tool for both IG and FB — just switch which account is selected.
-- If you only see "Page Insights" (no Content tab), you're in the old interface. Click "Insights" in the left sidebar and look for the redesigned Meta Business Suite.
+**Upload in EmberOS:**
 
----
+- Source: **Facebook (Meta Business Suite)**
+- Report type: **Content insights (posts)**
 
-## Facebook (Meta Business Suite)
+### Account / Page Overview (daily reach trend — optional)
 
-Identical flow to Instagram — same Meta Business Suite tool, just switch your active page to the Facebook page.
+Unlocks the **Daily Reach Overlay** chart on the unified dashboard.
 
-| Tab | Upload as |
+1. Same Business Suite URL
+2. Switch to **Instagram** or **Facebook** account
+3. **Left sidebar → Insights** (not Content)
+4. Set date range
+5. The **Overview** tab is the default view
+6. **⋯ menu → Export → CSV**
+
+**Upload in EmberOS:**
+
+- Source: **Instagram** → report type **Account overview**
+- Source: **Facebook** → report type **Page overview**
+
+### What the CSV looks like
+
+Each row is one post. Columns typically include:
+
+| Column (typical name) | What it means |
 |---|---|
-| **Content** | `Content insights (posts)` |
-| **Overview** | `Page overview` |
+| Post ID | Unique identifier |
+| Post type / Media type | Post / Reel / Story / Video |
+| Title / Description / Caption | The text body of the post |
+| Publish time / Date | When it was published |
+| Reach / Accounts reached | Unique people who saw it |
+| Impressions | Total views (can exceed reach) |
+| Reactions / Likes | Total reactions |
+| Comments | Comment count |
+| Shares | Share/send count |
+| Saves | Save count (IG-specific) |
+| Permalink | Direct link to the post |
+
+EmberOS handles variation in column names — `Likes` vs `Reactions`, `Caption` vs `Description`, etc.
+
+### If Meta Business Suite is acting up
+
+Meta's UI changes constantly. If the Export button isn't where described:
+
+- Try the direct URL: <https://business.facebook.com/latest/posts>
+- If you're stuck on the old **Creator Studio** interface, the path is **Creator Studio → Insights → posts → Export**
+- The Instagram **mobile app** has Insights but no CSV export — use desktop Business Suite
+- The Facebook **Page Insights** (the older "Insights" tab on your Page directly) does have CSV export under "Export Data" — works as a fallback
+
+### Common Meta-specific gotchas
+
+| Problem | Fix |
+|---|---|
+| "My Instagram account isn't showing in Business Suite" | Your IG must be a Business or Creator account AND connected to your FB Page. Convert via the IG app: Settings → Account → Switch to Professional Account, then connect to your FB Page. |
+| "Export button is grayed out" | You may not have admin access. Page admins / editors only. |
+| "CSV opens with weird emoji characters" | Open in a plain text editor (not Excel) — Meta exports as UTF-8, Excel sometimes mangles. Upload directly to EmberOS without opening. |
+| "Parser says 'Couldn't find header row'" | Wrong report type. Make sure you exported from the **Content** tab, not Audience or Reach. |
+| "All my numbers are zero" | Date range probably excluded any posts. Set range to at least "Last 28 days." |
+| "I don't see Meta Business Suite at all" | <https://business.facebook.com> not loading? You may need to first claim/create a Business Account — Meta has been rolling out forced migrations. Visit <https://business.facebook.com/overview> and follow the setup prompts. |
 
 ---
 
