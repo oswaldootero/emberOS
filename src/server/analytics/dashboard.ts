@@ -274,20 +274,27 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
   const performers = topPerformers.slice(0, 15);
 
   // -----------------------
-  // Reach trend overlay (only Meta overview imports give daily reach)
+  // Reach trend overlay
+  // Prefer Overview imports (daily account-level reach), fall back to
+  // Content imports which produce a daily timeseries from post publish dates.
   // -----------------------
   const trendMap = new Map<string, ReachTrendPoint>();
-  if (igOverview?.timeseries) {
-    for (const r of igOverview.timeseries) {
+  const igTrendSource = igOverview ?? igContent;
+  const fbTrendSource = fbOverview ?? fbContent;
+
+  if (igTrendSource?.timeseries) {
+    for (const r of igTrendSource.timeseries) {
       const d = String(r.date);
+      if (!d || d === "undefined") continue;
       const existing = trendMap.get(d) ?? { date: d };
       existing.instagram = num(r.reach);
       trendMap.set(d, existing);
     }
   }
-  if (fbOverview?.timeseries) {
-    for (const r of fbOverview.timeseries) {
+  if (fbTrendSource?.timeseries) {
+    for (const r of fbTrendSource.timeseries) {
       const d = String(r.date);
+      if (!d || d === "undefined") continue;
       const existing = trendMap.get(d) ?? { date: d };
       existing.facebook = num(r.reach);
       trendMap.set(d, existing);

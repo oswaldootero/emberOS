@@ -121,7 +121,7 @@ export function UnifiedDashboard({
             <CardDescription>
               {data.reachTrend.length > 0
                 ? "Daily reach across platforms — overlay shows where momentum is shifting."
-                : "Import an Instagram or Facebook 'Account overview' CSV to fill this in."}
+                : "Import an Instagram or Facebook Content insights CSV (or Account overview) to fill this in."}
             </CardDescription>
           </CardHeader>
           <CardContent>
