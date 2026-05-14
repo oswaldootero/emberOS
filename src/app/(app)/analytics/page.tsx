@@ -40,7 +40,9 @@ import {
 import { cn, compactNumber, relativeTime } from "@/lib/utils";
 import { getInternalAnalytics, type AnalyticsRange } from "@/server/analytics";
 import { getLatestImports } from "@/server/analytics/imports";
+import { buildDashboard } from "@/server/analytics/dashboard";
 import { ImportedDataPanels } from "@/components/analytics/imported-panels";
+import { UnifiedDashboard } from "@/components/analytics/unified-dashboard";
 
 export const metadata = { title: "Analytics" };
 export const dynamic = "force-dynamic";
@@ -65,6 +67,7 @@ export default async function AnalyticsPage({
     getInternalAnalytics(range),
     getLatestImports(),
   ]);
+  const unified = buildDashboard(imports);
 
   return (
     <div className="space-y-8">
@@ -80,6 +83,9 @@ export default async function AnalyticsPage({
           </Link>
         </Button>
       </PageHeader>
+
+      {/* Unified cross-platform dashboard */}
+      <UnifiedDashboard data={unified} />
 
       {/* Imported analytics + AI insights */}
       <ImportedDataPanels imports={imports} />

@@ -186,6 +186,104 @@ export function ContentTypePie({
   );
 }
 
+export function ReachOverlayChart({
+  data,
+}: {
+  data: { date: string; instagram?: number; facebook?: number; ga4?: number }[];
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <LineChart data={data} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <XAxis
+          dataKey="date"
+          stroke="rgba(255,255,255,0.3)"
+          fontSize={10}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={formatDay}
+        />
+        <YAxis
+          stroke="rgba(255,255,255,0.3)"
+          fontSize={10}
+          tickLine={false}
+          axisLine={false}
+        />
+        <Tooltip contentStyle={TOOLTIP} labelFormatter={formatDay} />
+        <Line
+          type="monotone"
+          dataKey="instagram"
+          name="Instagram"
+          stroke="#e3b04f"
+          strokeWidth={2}
+          dot={false}
+          connectNulls
+        />
+        <Line
+          type="monotone"
+          dataKey="facebook"
+          name="Facebook"
+          stroke="#a8845a"
+          strokeWidth={2}
+          dot={false}
+          connectNulls
+        />
+        <Line
+          type="monotone"
+          dataKey="ga4"
+          name="Web"
+          stroke="#7f5f3b"
+          strokeWidth={1.5}
+          dot={false}
+          connectNulls
+          strokeDasharray="4 4"
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function ChannelReachBars({
+  data,
+}: {
+  data: { label: string; reach: number; engagement: number }[];
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 6, right: 16, left: 0, bottom: 0 }}
+      >
+        <CartesianGrid stroke="rgba(255,255,255,0.04)" horizontal={false} />
+        <XAxis
+          type="number"
+          stroke="rgba(255,255,255,0.3)"
+          fontSize={10}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(v: number) => {
+            const n = Number(v);
+            if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+            return String(n);
+          }}
+        />
+        <YAxis
+          dataKey="label"
+          type="category"
+          stroke="rgba(255,255,255,0.4)"
+          fontSize={11}
+          tickLine={false}
+          axisLine={false}
+          width={92}
+        />
+        <Tooltip contentStyle={TOOLTIP} />
+        <Bar dataKey="reach" fill="#e3b04f" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function TelegramTimeseries({
   data,
 }: {
