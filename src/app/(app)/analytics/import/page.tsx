@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Card,
@@ -35,6 +35,15 @@ export default async function ImportPage() {
         title="Feed the dashboard."
         description="Export CSVs from Google Analytics, Search Console, Meta Business Suite, or YouTube Studio. EmberOS parses, normalizes, and reports back what's working."
       >
+        <Button variant="outline" size="sm" asChild>
+          <a
+            href="https://github.com/oswaldootero/emberOS/blob/main/docs/ANALYTICS-IMPORT.md"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <BookOpen className="h-4 w-4" /> Export Guide
+          </a>
+        </Button>
         <Button variant="outline" size="sm" asChild>
           <Link href="/analytics">
             <ArrowLeft className="h-4 w-4" /> Back to Analytics
