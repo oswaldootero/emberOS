@@ -93,6 +93,8 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
 
   const ga4Traffic = all.find((i) => i.reportType === "ga4_traffic_acquisition");
   const ga4Pages = all.find((i) => i.reportType === "ga4_pages_and_screens");
+  const ga4Demographics = all.find((i) => i.reportType === "ga4_demographics");
+  const anyGa4 = all.some((i) => i.source === "GA4");
   const gscQueries = all.find((i) => i.reportType === "gsc_queries");
   const gscPages = all.find((i) => i.reportType === "gsc_pages");
   const igContent = all.find((i) => i.reportType === "instagram_content");
@@ -104,7 +106,10 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
   // -----------------------
   // Hero KPIs
   // -----------------------
-  const ga4Users = num(ga4Traffic?.totals.users);
+  const ga4Users =
+    num(ga4Traffic?.totals.users) ||
+    num(ga4Pages?.totals.users) ||
+    num(ga4Demographics?.totals.users);
   const igReach = num(igContent?.totals.reach) || num(igOverview?.totals.reach);
   const fbReach = num(fbContent?.totals.reach) || num(fbOverview?.totals.reach);
 
@@ -163,10 +168,10 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
         source: src,
         label: SOURCE_LABELS[src],
         reach: ga4Users,
-        engagement: 0,
+        engagement: num(ga4Traffic?.totals.sessions),
         posts: 0,
         primaryMetric: { label: "users", value: ga4Users },
-        hasData: Boolean(ga4Traffic || ga4Pages),
+        hasData: anyGa4,
       };
     }
     if (src === "GSC") {
