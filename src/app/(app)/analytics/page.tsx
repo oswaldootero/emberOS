@@ -3,20 +3,21 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Bot,
-  Calendar as CalendarIcon,
   CalendarClock,
   CheckCircle2,
   Coins,
   Database,
+  ExternalLink,
   Eye,
   FileText,
   Globe,
-  MousePointerClick,
   Search,
-  Smartphone,
   Sparkles,
   TrendingUp,
   Users,
+  Youtube,
+  Instagram,
+  Facebook,
 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import {
@@ -30,10 +31,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   AICostLine,
   AIUsageTimeseries,
-  AudienceTimeseries,
   ContentTypePie,
   PlatformStackedBars,
-  SearchPerformanceTimeseries,
   TelegramTimeseries,
 } from "@/components/analytics/charts";
 import { cn, compactNumber, relativeTime } from "@/lib/utils";
@@ -101,11 +100,8 @@ export default async function AnalyticsPage({
         />
       </div>
 
-      {/* Audience (GA4) */}
-      <AudiencePanel ga4={a.ga4} range={range} />
-
-      {/* Search performance (GSC) */}
-      <SearchPanel gsc={a.gsc} />
+      {/* External audience dashboards */}
+      <ExternalDashboards />
 
       {/* AI usage */}
       <Card>
@@ -504,278 +500,110 @@ function EmptyHint({ label }: { label: string }) {
   );
 }
 
-function AudiencePanel({
-  ga4,
-  range,
-}: {
-  ga4: import("@/server/analytics").AnalyticsSnapshot["ga4"];
-  range: number;
-}) {
-  if (!ga4.connected) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-ember-300" />
-            Audience · Google Analytics 4
-          </CardTitle>
-          <CardDescription>
-            Visitors to heavensleaf.com. Connect GA4 to light this up.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          {ga4.reason ? (
-            <p>
-              Couldn't reach GA4: <code className="text-amber-300">{ga4.reason}</code>
-            </p>
-          ) : (
-            <p>
-              Set <code className="text-ember-200">GOOGLE_CLIENT_EMAIL</code>,{" "}
-              <code className="text-ember-200">GOOGLE_PRIVATE_KEY</code>, and{" "}
-              <code className="text-ember-200">GA4_PROPERTY_ID</code> in Vercel,
-              then grant the service account Viewer access on your GA4 property.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-  const t = ga4.totals;
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-ember-300" />
-            Audience · Google Analytics 4
-          </CardTitle>
-          <CardDescription>
-            Visitors to heavensleaf.com over the last {range} days.
-          </CardDescription>
-        </div>
-        <Badge variant="success" className="text-[10px]">
-          live · GA4
-        </Badge>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatusPill label="Visitors" value={t.activeUsers} />
-          <StatusPill label="New" value={t.newUsers} />
-          <StatusPill label="Sessions" value={t.sessions} />
-          <StatusPill label="Page views" value={t.pageViews} />
-        </div>
-        <AudienceTimeseries data={ga4.timeseries} />
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div>
-            <SectionLabel icon={Eye} text="Top pages" />
-            {ga4.topPages.length === 0 ? (
-              <EmptyHint label="No page-view data yet." />
-            ) : (
-              <ul className="divide-y divide-white/[0.04]">
-                {ga4.topPages.slice(0, 6).map((p) => (
-                  <li key={p.path} className="py-2 flex items-center gap-3 text-sm">
-                    <span className="flex-1 min-w-0 truncate text-ivory">
-                      {p.title ?? p.path}
-                    </span>
-                    <span className="text-muted-foreground tabular-nums text-xs">
-                      {p.views.toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div>
-            <SectionLabel icon={Globe} text="Top sources" />
-            {ga4.topSources.length === 0 ? (
-              <EmptyHint label="No source data yet." />
-            ) : (
-              <ul className="divide-y divide-white/[0.04]">
-                {ga4.topSources.slice(0, 6).map((s) => (
-                  <li
-                    key={`${s.source}-${s.medium}`}
-                    className="py-2 flex items-center gap-3 text-sm"
-                  >
-                    <span className="flex-1 truncate text-ivory">{s.source}</span>
-                    <Badge variant="outline" className="text-[10px]">
-                      {s.medium || "—"}
-                    </Badge>
-                    <span className="text-muted-foreground tabular-nums text-xs">
-                      {s.users.toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div>
-            <SectionLabel icon={Smartphone} text="Countries + devices" />
-            <div className="space-y-3">
-              <ul className="space-y-1.5">
-                {ga4.topCountries.slice(0, 4).map((c) => (
-                  <li
-                    key={c.country}
-                    className="flex items-center gap-3 text-sm"
-                  >
-                    <span className="flex-1 truncate text-ivory">{c.country}</span>
-                    <span className="text-muted-foreground tabular-nums text-xs">
-                      {c.users.toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="pt-2 border-t border-white/[0.05]">
-                {ga4.devices.map((d) => (
-                  <div
-                    key={d.category}
-                    className="flex items-center gap-3 text-xs py-1"
-                  >
-                    <span className="capitalize text-muted-foreground flex-1">
-                      {d.category}
-                    </span>
-                    <span className="text-ivory tabular-nums">
-                      {d.users.toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SearchPanel({
-  gsc,
-}: {
-  gsc: import("@/server/analytics").AnalyticsSnapshot["gsc"];
-}) {
-  if (!gsc.connected) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-ember-300" />
-            Search Performance · Google Search Console
-          </CardTitle>
-          <CardDescription>
-            How people find heavensleaf.com on Google. Connect GSC to light this
-            up.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          {gsc.reason ? (
-            <p>
-              Couldn't reach GSC: <code className="text-amber-300">{gsc.reason}</code>
-            </p>
-          ) : (
-            <p>
-              Set <code className="text-ember-200">GOOGLE_CLIENT_EMAIL</code>,{" "}
-              <code className="text-ember-200">GOOGLE_PRIVATE_KEY</code>, and{" "}
-              <code className="text-ember-200">GSC_SITE_URL</code> in Vercel, then
-              grant the service account access in Search Console.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-  const t = gsc.totals;
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-ember-300" />
-            Search Performance · GSC
-          </CardTitle>
-          <CardDescription>
-            Impressions, clicks, and rankings from Google search.
-          </CardDescription>
-        </div>
-        <Badge variant="success" className="text-[10px]">
-          live · GSC
-        </Badge>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatusPill label="Impressions" value={t.impressions} />
-          <StatusPill label="Clicks" value={t.clicks} />
-          <StatusPill
-            label="Avg CTR"
-            value={Number((t.ctr * 100).toFixed(2))}
-          />
-          <StatusPill
-            label="Avg position"
-            value={Number(t.position.toFixed(1))}
-          />
-        </div>
-        <SearchPerformanceTimeseries data={gsc.timeseries} />
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div>
-            <SectionLabel icon={MousePointerClick} text="Top queries" />
-            <ul className="divide-y divide-white/[0.04]">
-              {gsc.topQueries.slice(0, 8).map((q) => (
-                <li key={q.query} className="py-2 grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-sm">
-                  <span className="truncate text-ivory">{q.query}</span>
-                  <span className="text-muted-foreground tabular-nums text-xs">
-                    {q.impressions.toLocaleString()}
-                  </span>
-                  <Badge variant="outline" className="text-[10px] tabular-nums">
-                    {q.clicks} clicks
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">
-                    #{q.position.toFixed(1)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <SectionLabel icon={FileText} text="Top pages" />
-            <ul className="divide-y divide-white/[0.04]">
-              {gsc.topPages.slice(0, 8).map((p) => (
-                <li key={p.page} className="py-2 flex items-center gap-3 text-sm">
-                  <a
-                    href={p.page}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 truncate text-ivory hover:text-ember-200"
-                  >
-                    {new URL(p.page).pathname}
-                  </a>
-                  <span className="text-muted-foreground tabular-nums text-xs">
-                    {p.impressions.toLocaleString()}
-                  </span>
-                  <Badge variant="outline" className="text-[10px] tabular-nums">
-                    {p.clicks} clicks
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SectionLabel({
-  icon: Icon,
-  text,
-}: {
+type Dashboard = {
+  name: string;
+  description: string;
   icon: React.ComponentType<{ className?: string }>;
-  text: string;
-}) {
+  href: string;
+  available: boolean;
+  accent: string;
+};
+
+function ExternalDashboards() {
+  const dashboards: Dashboard[] = [
+    {
+      name: "Google Analytics",
+      description: "Website visitors, sources, demographics, devices",
+      icon: Users,
+      href: "https://analytics.google.com",
+      available: true,
+      accent: "from-ember-500/20",
+    },
+    {
+      name: "Search Console",
+      description: "Keywords, rankings, click-through rate from Google search",
+      icon: Search,
+      href: "https://search.google.com/search-console",
+      available: true,
+      accent: "from-tobacco-500/20",
+    },
+    {
+      name: "Instagram Insights",
+      description: "Reach, impressions, engagement on Instagram",
+      icon: Instagram,
+      href: "https://business.facebook.com/latest/insights",
+      available: true,
+      accent: "from-ember-500/20",
+    },
+    {
+      name: "Facebook Insights",
+      description: "Page reach, post performance, audience",
+      icon: Facebook,
+      href: "https://business.facebook.com/latest/insights",
+      available: true,
+      accent: "from-tobacco-500/20",
+    },
+    {
+      name: "YouTube Studio",
+      description: "Views, watch time, subscribers, traffic sources",
+      icon: Youtube,
+      href: "https://studio.youtube.com",
+      available: true,
+      accent: "from-ember-500/20",
+    },
+    {
+      name: "WordPress Admin",
+      description: "JetPack stats + post-level views (if installed)",
+      icon: Globe,
+      href: process.env.NEXT_PUBLIC_WORDPRESS_URL || "https://heavensleaf.com/wp-admin",
+      available: true,
+      accent: "from-tobacco-500/20",
+    },
+  ];
+
   return (
-    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-      <Icon className="h-3 w-3" />
-      {text}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ExternalLink className="h-4 w-4 text-ember-300" />
+          Audience Dashboards
+        </CardTitle>
+        <CardDescription>
+          Live audience data lives in each platform's native dashboard — opens in
+          a new tab. Sign in once and they stay logged in.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {dashboards.map((d) => {
+            const Icon = d.icon;
+            return (
+              <a
+                key={d.name}
+                href={d.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`group relative overflow-hidden rounded-lg border border-white/[0.05] bg-gradient-to-br ${d.accent} via-ink-900/60 to-ink-900 p-4 transition hover:border-ember-500/40 hover:shadow-glow-sm`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <Icon className="h-5 w-5 text-ember-300" />
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition" />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-ivory">{d.name}</div>
+                  <div className="text-[11px] text-muted-foreground leading-relaxed">
+                    {d.description}
+                  </div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
+
 
 function prettyType(t: string) {
   return t

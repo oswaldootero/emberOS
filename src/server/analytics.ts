@@ -4,8 +4,6 @@ import {
   getStats as wpGetStats,
   listPosts as wpListPosts,
 } from "@/server/integrations/wordpress";
-import { getGA4Summary, isGA4Configured, type GA4Summary } from "@/server/integrations/ga4";
-import { getGSCSummary, isGSCConfigured, type GSCSummary } from "@/server/integrations/gsc";
 
 export type AnalyticsRange = 7 | 30 | 90;
 
@@ -41,12 +39,6 @@ export type AnalyticsSnapshot = {
     stats?: { total: number; publish: number; draft: number; future: number; pending: number };
     recent?: { id: number; title: string; status: string; date: string; link: string }[];
   };
-  ga4:
-    | { connected: false; reason?: string }
-    | ({ connected: true } & GA4Summary);
-  gsc:
-    | { connected: false; reason?: string }
-    | ({ connected: true } & GSCSummary);
   telegram: {
     members: number;
     activeMembers7d: number;
@@ -305,19 +297,6 @@ export async function getInternalAnalytics(
     };
   }
 
-  // GA4 (audience analytics for the public WordPress site)
-  let ga4: AnalyticsSnapshot["ga4"] = { connected: false };
-  if (isGA4Configured()) {
-    const r = await getGA4Summary(range);
-    ga4 = r.ok ? { connected: true, ...r.value } : { connected: false, reason: r.error.message };
-  }
-
-  // GSC (search performance — keywords, rankings, CTR)
-  let gsc: AnalyticsSnapshot["gsc"] = { connected: false };
-  if (isGSCConfigured()) {
-    const r = await getGSCSummary(range);
-    gsc = r.ok ? { connected: true, ...r.value } : { connected: false, reason: r.error.message };
-  }
 
   return {
     range,
@@ -393,8 +372,6 @@ export async function getInternalAnalytics(
       })),
     },
     wordpress: wp,
-    ga4,
-    gsc,
     telegram: {
       members: tgMembers,
       activeMembers7d: tgActiveMembers7d,
