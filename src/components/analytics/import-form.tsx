@@ -54,11 +54,6 @@ const SOURCES: { key: SourceKey; label: string; hint: string }[] = [
     label: "Facebook (Meta Business Suite)",
     hint: "From business.facebook.com → Content → Export → CSV",
   },
-  {
-    key: "YOUTUBE",
-    label: "YouTube Studio",
-    hint: "From studio.youtube.com → Analytics → Content → Export → CSV",
-  },
 ];
 
 export function ImportForm() {

@@ -19,10 +19,6 @@ const INTEGRATIONS = [
   { name: "Telegram Bot", env: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET"] },
   { name: "WordPress", env: ["WORDPRESS_URL", "WORDPRESS_APP_PASSWORD"] },
   { name: "WooCommerce", env: ["WOOCOMMERCE_CONSUMER_KEY", "WOOCOMMERCE_CONSUMER_SECRET"] },
-  { name: "Meta (IG/FB)", env: ["META_APP_ID", "META_ACCESS_TOKEN"] },
-  { name: "YouTube", env: ["YOUTUBE_API_KEY", "YOUTUBE_OAUTH_REFRESH_TOKEN"] },
-  { name: "Google Search Console", env: ["GSC_CLIENT_EMAIL", "GSC_PRIVATE_KEY"] },
-  { name: "PostHog", env: ["NEXT_PUBLIC_POSTHOG_KEY"] },
 ];
 
 function isSet(key: string) {

@@ -73,10 +73,9 @@ const SOURCE_LABELS: Record<string, string> = {
   GSC: "Search Console",
   INSTAGRAM: "Instagram",
   FACEBOOK: "Facebook",
-  YOUTUBE: "YouTube",
 };
 
-const TRACKED_SOURCES = ["GA4", "GSC", "INSTAGRAM", "FACEBOOK", "YOUTUBE"];
+const TRACKED_SOURCES = ["GA4", "GSC", "INSTAGRAM", "FACEBOOK"];
 
 export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
   if (imports.length === 0) {
@@ -101,7 +100,6 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
   const igOverview = all.find((i) => i.reportType === "instagram_overview");
   const fbContent = all.find((i) => i.reportType === "facebook_content");
   const fbOverview = all.find((i) => i.reportType === "facebook_overview");
-  const ytContent = all.find((i) => i.reportType === "youtube_content");
 
   // -----------------------
   // Hero KPIs
@@ -125,8 +123,6 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
     num(fbContent?.totals.comments) +
     num(fbContent?.totals.shares) +
     num(fbContent?.totals.saves);
-  const ytEngagement = num(ytContent?.totals.views);
-
   const engagement = igEngagement + fbEngagement;
 
   const searchImpressions = num(gscQueries?.totals.impressions);
@@ -185,15 +181,15 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
         hasData: Boolean(gscQueries || gscPages),
       };
     }
-    // YouTube
+    // Unknown source — minimal fallback
     return {
       source: src,
-      label: SOURCE_LABELS[src],
-      reach: num(ytContent?.totals.views),
-      engagement: ytEngagement,
-      posts: num(ytContent?.rowCount ?? 0),
-      primaryMetric: { label: "views", value: num(ytContent?.totals.views) },
-      hasData: Boolean(ytContent),
+      label: SOURCE_LABELS[src] ?? src,
+      reach: 0,
+      engagement: 0,
+      posts: 0,
+      primaryMetric: { label: "", value: 0 },
+      hasData: false,
     };
   });
 
@@ -262,19 +258,6 @@ export function buildDashboard(imports: ImportedSnapshot[]): UnifiedDashboard {
       secondaryMetricLabel: "users",
     });
   }
-  for (const video of (ytContent?.topEntities ?? []).slice(0, 3)) {
-    topPerformers.push({
-      source: "YOUTUBE",
-      type: "video",
-      label: String(video.title),
-      url: null,
-      primaryMetric: num(video.views),
-      primaryMetricLabel: "views",
-      secondaryMetric: num(video.watchTime),
-      secondaryMetricLabel: "watch hours",
-    });
-  }
-
   // Sort by primaryMetric desc, take top 15 — but each source must be represented
   // if it has data, so we interleave a bit
   topPerformers.sort((a, b) => b.primaryMetric - a.primaryMetric);

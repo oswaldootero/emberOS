@@ -41,9 +41,6 @@ export const REPORT_TYPES = {
     { value: "facebook_content", label: "Content insights (posts)" },
     { value: "facebook_overview", label: "Page overview" },
   ],
-  YOUTUBE: [
-    { value: "youtube_content", label: "Content (videos)" },
-  ],
 } as const;
 
 const PARSERS: Record<string, (raw: string, filename: string) => ParsedImport> = {
@@ -56,7 +53,6 @@ const PARSERS: Record<string, (raw: string, filename: string) => ParsedImport> =
   instagram_overview: parseMetaOverview("INSTAGRAM"),
   facebook_content: parseMetaContent("FACEBOOK"),
   facebook_overview: parseMetaOverview("FACEBOOK"),
-  youtube_content: parseYouTubeContent,
 };
 
 export function parseImport(
@@ -551,66 +547,6 @@ function parseMetaOverview(source: "INSTAGRAM" | "FACEBOOK") {
       topEntities: [],
       warnings: [],
     };
-  };
-}
-
-// ----------------------------------------------------------------
-// YouTube parser
-// ----------------------------------------------------------------
-
-function parseYouTubeContent(raw: string): ParsedImport {
-  const rows = parseCSV(raw);
-  const headerIdx = findHeaderRowIndex(rows, [
-    "video title",
-    "views",
-    "watch time",
-    "impressions",
-  ]);
-  if (headerIdx === -1) throw new Error("Couldn't find header row in YouTube CSV");
-
-  const headers = rows[headerIdx].map((h) => h.toLowerCase().trim());
-  const dataRows = rows.slice(headerIdx + 1).filter((r) => r.length >= 2);
-
-  const cols = {
-    title: findColIndex(headers, ["video title", "title"]),
-    publishedAt: findColIndex(headers, ["video publish time", "publish time"]),
-    views: findColIndex(headers, ["views"]),
-    impressions: findColIndex(headers, ["impressions"]),
-    watchTime: findColIndex(headers, ["watch time (hours)", "watch time"]),
-    avgViewDuration: findColIndex(headers, ["average view duration"]),
-    subsGained: findColIndex(headers, ["subscribers", "subscribers gained"]),
-  };
-
-  const topEntities = dataRows.slice(0, 30).map((r) => ({
-    title: r[cols.title] ?? "",
-    publishedAt: r[cols.publishedAt] ?? "",
-    views: toNumber(r[cols.views]),
-    impressions: toNumber(r[cols.impressions]),
-    watchTime: toNumber(r[cols.watchTime]),
-    avgViewDuration: r[cols.avgViewDuration] ?? "",
-    subsGained: toNumber(r[cols.subsGained]),
-  }));
-
-  const totals = topEntities.reduce(
-    (acc, r) => ({
-      views: acc.views + Number(r.views),
-      impressions: acc.impressions + Number(r.impressions),
-      watchTime: acc.watchTime + Number(r.watchTime),
-      subsGained: acc.subsGained + Number(r.subsGained),
-    }),
-    { views: 0, impressions: 0, watchTime: 0, subsGained: 0 },
-  );
-
-  return {
-    source: "YOUTUBE",
-    reportType: "youtube_content",
-    periodStart: null,
-    periodEnd: null,
-    rowCount: dataRows.length,
-    totals,
-    timeseries: [],
-    topEntities,
-    warnings: [],
   };
 }
 

@@ -16,7 +16,6 @@ import {
   TrendingUp,
   UploadCloud,
   Users,
-  Youtube,
   Instagram,
   Facebook,
 } from "lucide-react";
@@ -563,14 +562,6 @@ function ExternalDashboards() {
       href: "https://business.facebook.com/latest/insights",
       available: true,
       accent: "from-tobacco-500/20",
-    },
-    {
-      name: "YouTube Studio",
-      description: "Views, watch time, subscribers, traffic sources",
-      icon: Youtube,
-      href: "https://studio.youtube.com",
-      available: true,
-      accent: "from-ember-500/20",
     },
     {
       name: "WordPress Admin",
