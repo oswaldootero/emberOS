@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
   FileSpreadsheet,
@@ -67,6 +67,23 @@ export function ImportForm() {
   const [pending, startTransition] = useTransition();
   const [dragOver, setDragOver] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // Pre-select source from ?source=KEY query param (sent by the in-app guide)
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const requested = searchParams.get("source");
+    if (
+      requested &&
+      requested !== source &&
+      requested in REPORT_TYPES
+    ) {
+      const key = requested as SourceKey;
+      setSource(key);
+      setReportType(REPORT_TYPES[key][0].value);
+    }
+    // intentionally only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sourceMeta = SOURCES.find((s) => s.key === source)!;
   const reports = REPORT_TYPES[source];

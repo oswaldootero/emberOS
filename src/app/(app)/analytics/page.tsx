@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowDownRight,
   ArrowUpRight,
+  BookOpen,
   Bot,
   CalendarClock,
   CheckCircle2,
@@ -76,6 +77,11 @@ export default async function AnalyticsPage({
         description="Imported data from your channels, AI insights about what's working, and live internal metrics — all in one place."
       >
         <RangeSwitcher current={range} />
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/analytics/guide">
+            <BookOpen className="h-4 w-4" /> How to upload
+          </Link>
+        </Button>
         <Button variant="gold" size="sm" asChild>
           <Link href="/analytics/import">
             <UploadCloud className="h-4 w-4" /> Import CSV
