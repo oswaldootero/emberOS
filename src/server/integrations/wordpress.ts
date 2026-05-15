@@ -230,6 +230,8 @@ function stripHtml(s: string) {
 export async function listPosts(opts: {
   perPage?: number;
   status?: WPPost["status"] | "any";
+  after?: Date;
+  before?: Date;
 } = {}): Promise<Outcome<WPPost[]>> {
   const params = new URLSearchParams({
     per_page: String(opts.perPage ?? 20),
@@ -238,6 +240,8 @@ export async function listPosts(opts: {
     order: "desc",
     _fields: "id,title,status,link,date,modified,slug,excerpt,author",
   });
+  if (opts.after) params.set("after", opts.after.toISOString());
+  if (opts.before) params.set("before", opts.before.toISOString());
   const r = await wp<RawWPPost[]>(`/wp/v2/posts?${params}`);
   if (!r.ok) return r;
   return ok(r.value.map(normalize));
