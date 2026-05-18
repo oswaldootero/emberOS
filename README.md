@@ -34,7 +34,7 @@ A cinematic AI-powered media operating system for **Heaven's Leaf** — a premiu
 - **Auth**: Supabase Auth (magic link)
 - **Storage**: Supabase Storage
 - **AI**: OpenAI (GPT-4o primary, GPT-4o-mini fast, text-embedding-3-large)
-- **Scheduling**: Upstash QStash (signed callbacks) + Vercel Cron
+- **Scheduling**: Vercel Cron (daily reflection) + WordPress native scheduler
 - **Rate limit**: Upstash Redis + `@upstash/ratelimit`
 - **Analytics**: PostHog
 - **Hosting**: Vercel
@@ -61,9 +61,8 @@ src/
 │   │   ├── workflows/
 │   │   └── settings/
 │   ├── api/
-│   │   ├── ai/             # generate (stream), repurpose, safety
+│   │   ├── ai/             # generate (stream), repurpose, safety, insights, daily-intentions, image
 │   │   ├── webhooks/       # telegram
-│   │   ├── scheduling/     # qstash publish callback
 │   │   └── cron/           # vercel-cron entrypoints
 │   ├── auth/callback/
 │   └── login/
@@ -85,7 +84,9 @@ src/
 ├── server/
 │   ├── ai/                 # brand-voice, prompt-templates, repurpose, safety
 │   ├── integrations/       # wordpress, telegram, meta, youtube, woocommerce
-│   ├── scheduling/         # qstash, publish-runner
+│   ├── analytics/          # parsers, dashboard aggregator, imports loader
+│   ├── analytics.ts
+│   ├── calendar.ts
 │   ├── dashboard.ts
 │   └── audit.ts
 ├── middleware.ts           # auth gate
@@ -170,10 +171,6 @@ curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
     \"secret_token\": \"${TELEGRAM_WEBHOOK_SECRET}\"
   }"
 ```
-
-### QStash scheduling
-
-Sign up at [console.upstash.com](https://console.upstash.com) → QStash. Copy `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY` into Vercel env. `schedulePostPublish()` will start firing signed callbacks to `/api/scheduling/publish`.
 
 ### Vercel Cron
 

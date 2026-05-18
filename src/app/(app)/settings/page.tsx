@@ -15,7 +15,6 @@ export const metadata = { title: "Settings" };
 const INTEGRATIONS = [
   { name: "Supabase", env: ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] },
   { name: "OpenAI", env: ["OPENAI_API_KEY"] },
-  { name: "Upstash QStash", env: ["QSTASH_TOKEN", "QSTASH_CURRENT_SIGNING_KEY"] },
   { name: "Telegram Bot", env: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET"] },
   { name: "WordPress", env: ["WORDPRESS_URL", "WORDPRESS_APP_PASSWORD"] },
   { name: "WooCommerce", env: ["WOOCOMMERCE_CONSUMER_KEY", "WOOCOMMERCE_CONSUMER_SECRET"] },

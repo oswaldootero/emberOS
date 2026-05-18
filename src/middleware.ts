@@ -7,7 +7,6 @@ const PUBLIC_PATHS = [
   "/auth",
   "/api/cron",
   "/api/webhooks",
-  "/api/scheduling",
   "/api/debug", // diagnostic endpoint — remove after setup
 ];
 
