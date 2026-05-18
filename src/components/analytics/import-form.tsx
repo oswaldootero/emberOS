@@ -71,22 +71,29 @@ export function ImportForm() {
   // Pre-select source from ?source=KEY query param (sent by the in-app guide)
   const searchParams = useSearchParams();
   useEffect(() => {
-    const requested = searchParams.get("source");
-    if (
-      requested &&
-      requested !== source &&
-      requested in REPORT_TYPES
-    ) {
-      const key = requested as SourceKey;
-      setSource(key);
-      setReportType(REPORT_TYPES[key][0].value);
+    try {
+      const requested = searchParams.get("source");
+      if (!requested) return;
+      const validKeys = SOURCES.map((s) => s.key);
+      if (
+        validKeys.includes(requested as SourceKey) &&
+        requested !== source
+      ) {
+        const key = requested as SourceKey;
+        setSource(key);
+        setReportType(REPORT_TYPES[key][0].value);
+      }
+    } catch (err) {
+      console.error("[ImportForm] could not apply ?source= param:", err);
     }
     // intentionally only on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const sourceMeta = SOURCES.find((s) => s.key === source)!;
-  const reports = REPORT_TYPES[source];
+  // Defensive lookups — fall back to safe defaults if state ever lands in
+  // a weird shape (malformed URL param, etc.)
+  const sourceMeta = SOURCES.find((s) => s.key === source) ?? SOURCES[0];
+  const reports = REPORT_TYPES[source] ?? REPORT_TYPES.INSTAGRAM;
 
   function handleSourceChange(s: SourceKey) {
     setSource(s);
