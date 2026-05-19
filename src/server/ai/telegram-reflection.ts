@@ -2,26 +2,34 @@ import { openai, MODELS } from "@/lib/openai";
 import { brandVoiceSystemPrompt } from "./brand-voice";
 
 /**
- * Telegram drafting — restricted to three topic categories that match the
+ * Telegram drafting — restricted to four topic categories that match the
  * Heaven's Leaf brotherhood:
  *
  *   1) BIBLE        — short passage + grounded masculine reflection
  *   2) QUOTE        — a real man's words + light context for today
  *   3) CIGAR        — culture, history, makers, traditions, recent news
+ *   4) BROTHERHOOD  — "Don't Smoke Alone" — the cost of isolation, the
+ *                     pull of community, men finding each other
  *
  * The brand voice (src/server/ai/brand-voice.ts) is loaded as the system
  * prompt unchanged. This file only controls WHAT topic each draft is
  * about, not HOW it sounds.
  */
 
-export type ReflectionCategory = "BIBLE" | "QUOTE" | "CIGAR";
+export type ReflectionCategory = "BIBLE" | "QUOTE" | "CIGAR" | "BROTHERHOOD";
 
-const CATEGORIES: ReflectionCategory[] = ["BIBLE", "QUOTE", "CIGAR"];
+const CATEGORIES: ReflectionCategory[] = [
+  "BIBLE",
+  "QUOTE",
+  "CIGAR",
+  "BROTHERHOOD",
+];
 
 const CATEGORY_LABEL: Record<ReflectionCategory, string> = {
   BIBLE: "Bible verse",
   QUOTE: "Men's quote",
   CIGAR: "Cigar culture",
+  BROTHERHOOD: "Brotherhood",
 };
 
 function pick<T>(arr: T[]): T {
@@ -180,6 +188,57 @@ Length: 70-180 words.`;
 }
 
 // ────────────────────────────────────────────────────────────────────
+// CATEGORY 4: BROTHERHOOD — "Don't Smoke Alone" + community
+// ────────────────────────────────────────────────────────────────────
+
+const BROTHERHOOD_THEMES = [
+  "the silent slide into isolation that most men don't notice until something cracks",
+  "the invitation that changes everything — 'come by tomorrow night'",
+  "the friend who calls when no one else does",
+  "the third place — why a lounge / a porch / a kitchen table matters more than people admit",
+  "mentorship as showing up, not lecturing — sitting through the silence with someone",
+  "letting another man see the real version of you over a long burn",
+  "the brother who said yes after being invited eight times — and what unlocked",
+  "fatherhood: bringing your son into the room where the men gather",
+  "strangers who become brothers around the same fire",
+  "the real cost of going through hard seasons alone",
+  "the quiet miracle of being known",
+  "cigars as the excuse — friendship is the meeting",
+  "asking better questions: not 'how are you' but 'what's actually heavy right now'",
+  "the unspoken rule of the lounge — no fixing, just witnessing",
+  "what a man owes the men around him — and what he owes himself",
+];
+
+function buildBrotherhoodPrompt(theme: string): string {
+  return `Write a short Telegram post about brotherhood, community, and the cost of going through life alone. This is the heart of Heaven's Leaf — the "Don't Smoke Alone" ethos.
+
+Theme to land: ${theme}
+
+Hard rules:
+- Concrete. Specific moments. Specific actions. Not abstract philosophy.
+- Speak to the man reading it as if you're sitting across from him.
+- Reference real things: a phone in a pocket, a porch in October, a chair pulled up to a fire, a coffee already cold.
+- Show what brotherhood looks like in practice — don't define it. The reader knows.
+- If you mention "Don't Smoke Alone," do it once and let it land. Don't repeat it.
+- One concrete call to action is allowed and encouraged — but it must be small and human:
+  · "Text one brother this week, just to ask how he's actually doing."
+  · "Pull up a chair for someone tomorrow night."
+  · "Stop being the man who almost reached out."
+  Never an ad-style CTA. Never "join our community" or "RSVP for the next event."
+
+Length: 60-150 words.
+
+Voice rules:
+- Don't perform brotherhood — describe it.
+- Don't moralize. Don't say "we need each other more than ever."
+- Don't romanticize the lounge — let the everydayness of it carry the weight.
+- Don't write about the brand. Write about the men.
+- End with one line that lands quietly.
+
+${FORBIDDEN_OPENINGS.map((r) => `- ${r}`).join("\n")}`;
+}
+
+// ────────────────────────────────────────────────────────────────────
 // Public API
 // ────────────────────────────────────────────────────────────────────
 
@@ -215,6 +274,9 @@ export async function generateReflection(
     theme = pick(QUOTE_THEMES);
     const sources = pick(QUOTE_SOURCES);
     userPrompt = buildQuotePrompt(theme, sources);
+  } else if (category === "BROTHERHOOD") {
+    theme = pick(BROTHERHOOD_THEMES);
+    userPrompt = buildBrotherhoodPrompt(theme);
   } else {
     theme = pick(CIGAR_ANGLES);
     userPrompt = buildCigarPrompt(theme);
