@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Card,
@@ -56,11 +57,10 @@ export default async function TelegramPage() {
         description="Daily reflections, cigar check-ins, event reminders, scripture prompts, FAQ — all from one bot."
       >
         {!data.live && <Badge variant="warning">Demo data</Badge>}
-        <Button variant="outline" size="sm">
-          <Bot className="h-4 w-4" /> Bot Settings
-        </Button>
-        <Button variant="gold" size="sm">
-          <Send className="h-4 w-4" /> Compose Broadcast
+        <Button variant="gold" size="sm" asChild>
+          <Link href="/telegram/compose">
+            <Send className="h-4 w-4" /> Compose Broadcast
+          </Link>
         </Button>
       </PageHeader>
 

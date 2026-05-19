@@ -99,6 +99,10 @@ export async function getMe() {
  * Verifies the incoming webhook secret. Telegram sends it in
  * X-Telegram-Bot-Api-Secret-Token header.
  */
+export function isConfigured(): boolean {
+  return Boolean(env.TELEGRAM_BOT_TOKEN);
+}
+
 export function verifyWebhookSecret(header: string | null): boolean {
   if (!env.TELEGRAM_WEBHOOK_SECRET) return false;
   return header === env.TELEGRAM_WEBHOOK_SECRET;
