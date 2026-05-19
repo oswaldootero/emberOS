@@ -332,10 +332,11 @@ export async function unapproveDraft(draftId: string): Promise<BroadcastResult> 
 
 export async function generateFreshDraft(): Promise<BroadcastResult> {
   const user = await requireUser();
-  const dayOfWeek = new Date().getUTCDay();
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
 
   try {
-    const fresh = await generateReflection({ dayOfWeek });
+    const fresh = await generateReflection({ dayOfWeek: today.getUTCDay() });
     const draft = await prisma.telegramDraft.create({
       data: {
         source: "manual",
@@ -343,6 +344,7 @@ export async function generateFreshDraft(): Promise<BroadcastResult> {
         parseMode: "HTML",
         theme: fresh.theme,
         status: "PENDING",
+        proposedFor: today, // ← critical: without this it never shows in the weekly view
         metadata: {
           structure: fresh.structure,
           register: fresh.register,
@@ -361,6 +363,96 @@ export async function generateFreshDraft(): Promise<BroadcastResult> {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Generation failed",
+    };
+  }
+}
+
+/**
+ * Fill the week — generate one draft for each of the next 7 days that
+ * doesn't already have a PENDING / APPROVED / SENT draft. Mirrors what
+ * the daily cron does so the user can prime the pipeline without waiting
+ * for tomorrow morning.
+ */
+export async function topUpWeek(): Promise<
+  | { ok: true; created: number; skipped: number }
+  | { ok: false; error: string }
+> {
+  const user = await requireUser();
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const horizon = new Date(today);
+  horizon.setUTCDate(horizon.getUTCDate() + 7);
+
+  try {
+    const existing = await prisma.telegramDraft.findMany({
+      where: {
+        proposedFor: { gte: today, lt: horizon },
+        status: { in: ["PENDING", "APPROVED", "SENT"] },
+      },
+      select: { proposedFor: true },
+    });
+    const haveDay = new Set(
+      existing
+        .map((d) => d.proposedFor)
+        .filter((d): d is Date => d != null)
+        .map((d) => d.toISOString().slice(0, 10)),
+    );
+
+    const missing: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(today);
+      day.setUTCDate(day.getUTCDate() + i);
+      if (!haveDay.has(day.toISOString().slice(0, 10))) missing.push(day);
+    }
+
+    if (missing.length === 0) {
+      return { ok: true, created: 0, skipped: 7 };
+    }
+
+    const generations = await Promise.all(
+      missing.map(async (day) => {
+        try {
+          const r = await generateReflection({ dayOfWeek: day.getUTCDay() });
+          return { day, r };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    let created = 0;
+    for (const g of generations) {
+      if (!g) continue;
+      await prisma.telegramDraft.create({
+        data: {
+          source: "manual_week_topup",
+          text: g.r.text,
+          parseMode: "HTML",
+          theme: g.r.theme,
+          status: "PENDING",
+          proposedFor: g.day,
+          metadata: {
+            structure: g.r.structure,
+            register: g.r.register,
+            requestedBy: user.id,
+          },
+        },
+      });
+      created += 1;
+    }
+
+    await audit("telegram.week_topup", {
+      actorId: user.id,
+      diff: { created, skipped: 7 - missing.length },
+    });
+    revalidatePath("/telegram");
+
+    return { ok: true, created, skipped: 7 - missing.length };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Top-up failed",
     };
   }
 }

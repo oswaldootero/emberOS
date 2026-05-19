@@ -33,6 +33,7 @@ import {
   discardDraft,
   regenerateDraft,
   generateFreshDraft,
+  topUpWeek,
 } from "@/server/actions/telegram";
 
 export type DraftRow = {
@@ -60,6 +61,23 @@ export function DraftsPanel({ drafts }: { drafts: DraftRow[] }) {
     });
   }
 
+  function handleTopUpWeek() {
+    startTransition(async () => {
+      const r = await topUpWeek();
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      if (r.created === 0) {
+        toast.success("Week is already full — nothing to add.");
+      } else {
+        toast.success(
+          `${r.created} new draft${r.created === 1 ? "" : "s"} generated for the week.`,
+        );
+      }
+    });
+  }
+
   // Build a 7-day grid: today + next 6
   const days = buildSevenDayWindow();
   const byDay = groupByDay(drafts);
@@ -67,6 +85,7 @@ export function DraftsPanel({ drafts }: { drafts: DraftRow[] }) {
   // Counts for the header
   const approvedCount = drafts.filter((d) => d.status === "APPROVED").length;
   const pendingCount = drafts.filter((d) => d.status === "PENDING").length;
+  const missingDays = days.filter((d) => (byDay.get(dayKey(d)) ?? []).length === 0).length;
 
   return (
     <Card>
@@ -88,19 +107,35 @@ export function DraftsPanel({ drafts }: { drafts: DraftRow[] }) {
           <Badge variant="outline" className="text-[10px]">
             {pendingCount} awaiting review
           </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNewDraft}
-            disabled={pending}
-          >
-            {pending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Wand2 className="h-3.5 w-3.5" />
-            )}
-            Extra draft
-          </Button>
+          {missingDays > 0 ? (
+            <Button
+              variant="gold"
+              size="sm"
+              onClick={handleTopUpWeek}
+              disabled={pending}
+            >
+              {pending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Wand2 className="h-3.5 w-3.5" />
+              )}
+              Generate {missingDays} missing day{missingDays === 1 ? "" : "s"}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNewDraft}
+              disabled={pending}
+            >
+              {pending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Wand2 className="h-3.5 w-3.5" />
+              )}
+              Extra draft for today
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
