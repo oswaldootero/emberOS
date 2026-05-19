@@ -11,13 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bot, Crown, Send, Sparkles, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { DraftsPanel } from "@/components/telegram/drafts-panel";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Telegram Command Center" };
 
 async function loadTelegram() {
   try {
-    const [members, topContributors, recentMsgs] = await Promise.all([
+    const [members, topContributors, recentMsgs, drafts] = await Promise.all([
       prisma.telegramMember.count(),
       prisma.telegramMember.findMany({
         orderBy: { contributionScore: "desc" },
@@ -28,8 +29,13 @@ async function loadTelegram() {
           sentAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
         },
       }),
+      prisma.telegramDraft.findMany({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
     ]);
-    return { live: true, members, topContributors, recentMsgs };
+    return { live: true, members, topContributors, recentMsgs, drafts };
   } catch {
     return {
       live: false,
@@ -42,6 +48,7 @@ async function loadTelegram() {
         { id: "5", firstName: "Brandon", username: "bk__", contributionScore: 72.5 },
       ],
       recentMsgs: 1244,
+      drafts: [],
     };
   }
 }
@@ -63,6 +70,18 @@ export default async function TelegramPage() {
           </Link>
         </Button>
       </PageHeader>
+
+      {/* Pending drafts — AI proposes, you curate */}
+      <DraftsPanel
+        drafts={data.drafts.map((d) => ({
+          id: d.id,
+          text: d.text,
+          theme: d.theme,
+          source: d.source,
+          createdAt: d.createdAt.toISOString(),
+          parseMode: d.parseMode,
+        }))}
+      />
 
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 relative overflow-hidden">

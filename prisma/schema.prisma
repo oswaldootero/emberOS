@@ -100,6 +100,12 @@ enum AnalyticsSource {
   CUSTOM
 }
 
+enum TelegramDraftStatus {
+  PENDING
+  SENT
+  DISCARDED
+}
+
 enum WorkflowTrigger {
   CONTENT_PUBLISHED
   MANUAL
@@ -401,6 +407,28 @@ model TelegramMessage {
   @@unique([chatId, telegramMsgId])
   @@index([sentAt])
   @@index([memberId])
+}
+
+model TelegramDraft {
+  id            String              @id @default(cuid())
+  source        String              // "daily_reflection_cron" | "manual" | "scheduled"
+  text          String              @db.Text
+  parseMode     String              @default("HTML")
+  theme         String?             // e.g. "ritual", "brotherhood", "silence" — used for prompt variation
+  status        TelegramDraftStatus @default(PENDING)
+
+  proposedFor   DateTime?           // When the AI thought this should ideally send
+  sentAt        DateTime?
+  sentToChatId  String?
+  externalMsgId String?             // Telegram message_id once sent
+  externalUrl   String?
+
+  metadata      Json?               // prompt seed, tokens, model, cost
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([status, createdAt])
 }
 
 model CommunityEvent {

@@ -1,8 +1,13 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyWebhookSecret, sendMessage } from "@/server/integrations/telegram";
-import { brandVoiceSystemPrompt } from "@/server/ai/brand-voice";
-import { openai, MODELS } from "@/lib/openai";
+import { generateReflection } from "@/server/ai/telegram-reflection";
+import {
+  pickWelcome,
+  pickSmokeReply,
+  pickHelpIntro,
+  pickReflectError,
+} from "@/server/ai/bot-replies";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +33,7 @@ export async function POST(req: NextRequest) {
       await upsertMember(m);
       await sendMessage({
         chatId: String(update.message.chat.id),
-        text: `Welcome to the brotherhood, <b>${m.first_name ?? "friend"}</b>. Pull up a chair. The fire is steady here.`,
+        text: pickWelcome(m.first_name),
       });
     }
     return Response.json({ ok: true });
@@ -98,10 +103,9 @@ async function handleCommand(text: string, chatId: string) {
     await sendMessage({
       chatId,
       text: [
-        "Welcome to the <b>Heaven's Leaf Brotherhood</b>.",
+        pickHelpIntro(),
         "",
-        "Commands:",
-        "/reflect — today's reflection",
+        "/reflect — a fresh reflection",
         "/smoke — log a cigar check-in",
         "/events — upcoming community events",
         "/verse — Sunday-morning scripture prompt",
@@ -112,35 +116,17 @@ async function handleCommand(text: string, chatId: string) {
 
   if (cmd === "/reflect") {
     try {
-      const client = openai();
-      const r = await client.chat.completions.create({
-        model: MODELS.fast(),
-        temperature: 0.85,
-        messages: [
-          { role: "system", content: brandVoiceSystemPrompt() },
-          {
-            role: "user",
-            content:
-              "Write a 4-sentence reflection appropriate for the Heaven's Leaf Telegram brotherhood right now. End with a single contemplative question.",
-          },
-        ],
-      });
-      const reply = r.choices[0]?.message?.content ?? "";
-      await sendMessage({ chatId, text: reply });
+      const dayOfWeek = new Date().getUTCDay();
+      const r = await generateReflection({ dayOfWeek });
+      await sendMessage({ chatId, text: r.text });
     } catch {
-      await sendMessage({
-        chatId,
-        text: "The fire is quiet right now — try again in a moment.",
-      });
+      await sendMessage({ chatId, text: pickReflectError() });
     }
     return;
   }
 
   if (cmd === "/smoke") {
-    await sendMessage({
-      chatId,
-      text: "Cigar logged. May this draw be slower than the last. 🪶",
-    });
+    await sendMessage({ chatId, text: pickSmokeReply() });
     return;
   }
 }
