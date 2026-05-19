@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Heart, ShieldAlert, Sparkles } from "lucide-react";
+import { Heart, MessageSquare, Quote, ShieldAlert, Sparkles } from "lucide-react";
 import { HEAVENS_LEAF_VOICE } from "@/server/ai/brand-voice";
 
 export const metadata = { title: "Brand Voice" };
@@ -19,7 +19,7 @@ export default function BrandVoicePage() {
       <PageHeader
         eyebrow="Brand Voice Memory"
         title="The soul behind every word."
-        description="Persistent tone, vocabulary, and theological boundaries. Loaded into every AI generation."
+        description="Identity, tone, vocabulary, and rules. Loaded into every AI generation across EmberOS."
       />
 
       <Card>
@@ -69,6 +69,29 @@ export default function BrandVoicePage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-ember-300" /> Writing Style
+          </CardTitle>
+          <CardDescription>
+            How sentences should feel before they reach a reader.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2">
+            {v.writingStyle.map((s) => (
+              <li
+                key={s}
+                className="text-sm text-ivory/90 border-l-2 border-ember-500/40 pl-3"
+              >
+                {s}
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -126,7 +149,32 @@ export default function BrandVoicePage() {
           <CardTitle>Cadence</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-ivory/90 leading-relaxed italic">{v.cadence}</p>
+          <p className="text-sm text-ivory/90 leading-relaxed italic whitespace-pre-line">
+            {v.cadence}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Quote className="h-4 w-4 text-ember-300" /> Examples in Practice
+          </CardTitle>
+          <CardDescription>
+            Lines the voice has actually produced — reference for the bar to clear.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-3">
+            {v.examples.map((e) => (
+              <li
+                key={e}
+                className="font-display italic text-base text-ivory border-l-2 border-ember-500/40 pl-3"
+              >
+                "{e}"
+              </li>
+            ))}
+          </ul>
         </CardContent>
       </Card>
     </div>
