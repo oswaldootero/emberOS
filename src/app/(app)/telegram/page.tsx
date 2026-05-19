@@ -30,9 +30,29 @@ async function loadTelegram() {
         },
       }),
       prisma.telegramDraft.findMany({
-        where: { status: "PENDING" },
-        orderBy: { createdAt: "desc" },
-        take: 10,
+        where: {
+          // Show pending + approved drafts in the next 14 days, and any sent
+          // ones from the last 3 days for visible feedback
+          OR: [
+            {
+              status: { in: ["PENDING", "APPROVED"] },
+              proposedFor: {
+                gte: new Date(new Date().setHours(0, 0, 0, 0)),
+                lt: new Date(
+                  new Date().setDate(new Date().getDate() + 14),
+                ),
+              },
+            },
+            {
+              status: "SENT",
+              sentAt: {
+                gte: new Date(Date.now() - 3 * 86400000),
+              },
+            },
+          ],
+        },
+        orderBy: [{ proposedFor: "asc" }, { createdAt: "asc" }],
+        take: 50,
       }),
     ]);
     return { live: true, members, topContributors, recentMsgs, drafts };
@@ -71,15 +91,17 @@ export default async function TelegramPage() {
         </Button>
       </PageHeader>
 
-      {/* Pending drafts — AI proposes, you curate */}
+      {/* Weekly drafts — AI proposes, you approve / discard / send */}
       <DraftsPanel
         drafts={data.drafts.map((d) => ({
           id: d.id,
           text: d.text,
           theme: d.theme,
           source: d.source,
-          createdAt: d.createdAt.toISOString(),
+          status: d.status,
           parseMode: d.parseMode,
+          proposedFor: d.proposedFor?.toISOString() ?? null,
+          createdAt: d.createdAt.toISOString(),
         }))}
       />
 

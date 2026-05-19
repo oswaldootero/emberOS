@@ -279,6 +279,57 @@ export async function regenerateDraft(draftId: string): Promise<BroadcastResult>
   }
 }
 
+export async function approveDraft(
+  draftId: string,
+  editedText?: string,
+): Promise<BroadcastResult> {
+  const user = await requireUser();
+  const draft = await prisma.telegramDraft.findUnique({ where: { id: draftId } });
+  if (!draft) return { ok: false, error: "Draft not found." };
+  if (draft.status === "SENT") {
+    return { ok: false, error: "Already sent — can't re-approve." };
+  }
+
+  await prisma.telegramDraft.update({
+    where: { id: draftId },
+    data: {
+      status: "APPROVED",
+      text: editedText ?? draft.text,
+    },
+  });
+  await audit("telegram.draft_approved", {
+    actorId: user.id,
+    entityType: "TelegramDraft",
+    entityId: draftId,
+    diff: {
+      edited: editedText != null,
+      proposedFor: draft.proposedFor?.toISOString() ?? null,
+    },
+  });
+  revalidatePath("/telegram");
+  return { ok: true, externalPostId: draftId, chatId: "" };
+}
+
+export async function unapproveDraft(draftId: string): Promise<BroadcastResult> {
+  const user = await requireUser();
+  const draft = await prisma.telegramDraft.findUnique({ where: { id: draftId } });
+  if (!draft) return { ok: false, error: "Draft not found." };
+  if (draft.status !== "APPROVED") {
+    return { ok: false, error: "Not currently approved." };
+  }
+  await prisma.telegramDraft.update({
+    where: { id: draftId },
+    data: { status: "PENDING" },
+  });
+  await audit("telegram.draft_unapproved", {
+    actorId: user.id,
+    entityType: "TelegramDraft",
+    entityId: draftId,
+  });
+  revalidatePath("/telegram");
+  return { ok: true, externalPostId: draftId, chatId: "" };
+}
+
 export async function generateFreshDraft(): Promise<BroadcastResult> {
   const user = await requireUser();
   const dayOfWeek = new Date().getUTCDay();

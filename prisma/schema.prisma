@@ -101,9 +101,10 @@ enum AnalyticsSource {
 }
 
 enum TelegramDraftStatus {
-  PENDING
-  SENT
-  DISCARDED
+  PENDING    // AI drafted it, awaiting your eyes
+  APPROVED   // You said yes — will auto-send on proposedFor day
+  SENT       // Posted to Telegram
+  DISCARDED  // You said no — won't send
 }
 
 enum WorkflowTrigger {
