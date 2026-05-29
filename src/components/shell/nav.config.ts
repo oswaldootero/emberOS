@@ -7,6 +7,7 @@ import {
   Globe,
   TrendingUp,
   Heart,
+  Library,
   Settings,
   Users,
   UserCog,
@@ -92,6 +93,12 @@ export const navigation: NavSection[] = [
         href: "/brand-voice",
         icon: Heart,
         description: "Tone memory + guardrails",
+      },
+      {
+        label: "Asset Library",
+        href: "/library",
+        icon: Library,
+        description: "Images, video, audio, PDFs",
       },
       {
         label: "Team",

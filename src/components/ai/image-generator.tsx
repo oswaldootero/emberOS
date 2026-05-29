@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  CheckCircle2,
   Download,
+  Library,
   Image as ImageIcon,
   Loader2,
   RefreshCw,
@@ -28,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { saveGeneratedImage } from "@/server/actions/library";
 
 type Size = "1024x1024" | "1536x1024" | "1024x1536";
 type Quality = "low" | "medium" | "high";
@@ -52,6 +55,8 @@ export function ImageGenerator({
   const [quality, setQuality] = useState<Quality>("medium");
   const [isGenerating, setIsGenerating] = useState(false);
   const [image, setImage] = useState<GeneratedImagePayload | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedToLibrary, setSavedToLibrary] = useState(false);
 
   async function generate() {
     if (prompt.trim().length < 3) {
@@ -73,6 +78,7 @@ export function ImageGenerator({
         size,
       };
       setImage(payload);
+      setSavedToLibrary(false);
       onImage?.(payload);
       toast.success("Image generated.");
     } catch (e) {
@@ -88,6 +94,22 @@ export function ImageGenerator({
     a.href = image.dataUrl;
     a.download = `emberos-${Date.now()}.png`;
     a.click();
+  }
+
+  async function saveToLibrary() {
+    if (!image || saving || savedToLibrary) return;
+    setSaving(true);
+    try {
+      const r = await saveGeneratedImage(image.dataUrl, prompt);
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      setSavedToLibrary(true);
+      toast.success("Saved to Asset Library.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -192,8 +214,26 @@ export function ImageGenerator({
                     type="button"
                     variant="outline"
                     size="sm"
+                    onClick={saveToLibrary}
+                    disabled={saving || savedToLibrary}
+                    className="backdrop-blur bg-ink-950/70"
+                    title={savedToLibrary ? "Saved to library" : "Save to Asset Library"}
+                  >
+                    {saving ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : savedToLibrary ? (
+                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                    ) : (
+                      <Library className="h-3 w-3" />
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={download}
-                    className="backdrop-blur"
+                    className="backdrop-blur bg-ink-950/70"
+                    title="Download"
                   >
                     <Download className="h-3 w-3" />
                   </Button>
