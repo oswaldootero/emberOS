@@ -1,12 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarClock, Instagram, Send, Youtube, Globe } from "lucide-react";
+import { CalendarClock, Instagram, Send, Globe } from "lucide-react";
 import { relativeTime } from "@/lib/utils";
 
 const platformIcon: Record<string, React.ComponentType<{ className?: string }>> = {
   INSTAGRAM: Instagram,
   TELEGRAM: Send,
-  YOUTUBE: Youtube,
   WORDPRESS: Globe,
 };
 

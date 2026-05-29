@@ -4,13 +4,9 @@ import {
   Sparkles,
   Recycle,
   Calendar,
-  Send,
   Globe,
   TrendingUp,
-  Library,
-  Workflow,
   Heart,
-  Search,
   Settings,
   Users,
   UserCog,
@@ -64,12 +60,6 @@ export const navigation: NavSection[] = [
     label: "Channels",
     items: [
       {
-        label: "Publishing",
-        href: "/publishing",
-        icon: Send,
-        description: "Instagram, Facebook, YouTube, X",
-      },
-      {
         label: "Telegram",
         href: "/telegram",
         icon: Users,
@@ -84,14 +74,8 @@ export const navigation: NavSection[] = [
     ],
   },
   {
-    label: "Growth",
+    label: "Insight",
     items: [
-      {
-        label: "SEO Command",
-        href: "/seo",
-        icon: Search,
-        description: "Rankings, clusters, gaps",
-      },
       {
         label: "Analytics",
         href: "/analytics",
@@ -108,18 +92,6 @@ export const navigation: NavSection[] = [
         href: "/brand-voice",
         icon: Heart,
         description: "Tone memory + guardrails",
-      },
-      {
-        label: "Asset Library",
-        href: "/library",
-        icon: Library,
-        description: "Images, video, audio, PDFs",
-      },
-      {
-        label: "Workflows",
-        href: "/workflows",
-        icon: Workflow,
-        description: "Automation pipelines",
       },
       {
         label: "Team",

@@ -17,7 +17,6 @@ const INTEGRATIONS = [
   { name: "OpenAI", env: ["OPENAI_API_KEY"] },
   { name: "Telegram Bot", env: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET"] },
   { name: "WordPress", env: ["WORDPRESS_URL", "WORDPRESS_APP_PASSWORD"] },
-  { name: "WooCommerce", env: ["WOOCOMMERCE_CONSUMER_KEY", "WOOCOMMERCE_CONSUMER_SECRET"] },
 ];
 
 function isSet(key: string) {
