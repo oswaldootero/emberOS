@@ -11,6 +11,7 @@ import {
   Settings,
   Users,
   UserCog,
+  Workflow,
 } from "lucide-react";
 
 export type NavItem = {
@@ -99,6 +100,12 @@ export const navigation: NavSection[] = [
         href: "/library",
         icon: Library,
         description: "Images, video, audio, PDFs",
+      },
+      {
+        label: "Workflows",
+        href: "/workflows",
+        icon: Workflow,
+        description: "Automation when content publishes",
       },
       {
         label: "Team",

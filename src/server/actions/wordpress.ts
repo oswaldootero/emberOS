@@ -5,6 +5,7 @@ import { z } from "zod";
 import { marked } from "marked";
 import { requireUser } from "@/server/auth";
 import { audit } from "@/server/audit";
+import { fireTrigger } from "@/server/workflows/engine";
 import {
   publishArticle,
   isConfigured,
@@ -120,6 +121,22 @@ export async function publishToWordPress(
       hasFeaturedImage: Boolean(featuredMediaId),
     },
   });
+
+  // Only fire CONTENT_PUBLISHED workflows when the post actually went live —
+  // not for drafts or scheduled posts (those fire when WP publishes them)
+  if (d.status === "publish") {
+    fireTrigger("CONTENT_PUBLISHED", {
+      source: "wordpress",
+      title: d.title,
+      excerpt: d.excerpt ?? "",
+      url: result.value.externalUrl ?? "",
+      externalUrl: result.value.externalUrl ?? "",
+      externalPostId: result.value.externalPostId,
+      slug: d.slug,
+    }).catch((e) =>
+      console.error("[wordpress.publish] workflow trigger failed:", e),
+    );
+  }
 
   revalidatePath("/wordpress");
   return {
