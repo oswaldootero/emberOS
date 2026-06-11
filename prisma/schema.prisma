@@ -107,6 +107,49 @@ enum TelegramDraftStatus {
   DISCARDED  // You said no — won't send
 }
 
+enum CustomerType {
+  RETAILER
+  LOUNGE
+  DISTRIBUTOR
+  ONLINE_CUSTOMER
+  EVENT_LEAD
+}
+
+enum LeadSource {
+  BROKER
+  WEBSITE
+  EVENT
+  REFERRAL
+  SOCIAL_MEDIA
+  DIRECT_OUTREACH
+}
+
+enum CustomerStatus {
+  LEAD
+  CONTACTED
+  SAMPLE_SENT
+  OPEN_ACCOUNT
+  ACTIVE_CUSTOMER
+  INACTIVE
+  LOST
+}
+
+enum OrderPaymentStatus {
+  UNPAID
+  PAID
+  PARTIAL
+  OVERDUE
+  REFUNDED
+}
+
+enum OrderFulfillmentStatus {
+  PENDING
+  IN_PROGRESS
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
 enum WorkflowTrigger {
   CONTENT_PUBLISHED
   MANUAL
@@ -154,6 +197,9 @@ model User {
   campaigns           Campaign[]
   auditLogs           AuditLog[]
   analyticsImports    AnalyticsImport[]
+  forecastScenarios   ForecastScenario[]
+  assignedCustomers   Customer[]        @relation("AssignedCustomers")
+  createdOrders       Order[]           @relation("OrderCreator")
 
   @@index([role])
   @@index([supabaseId])
@@ -707,4 +753,107 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId])
   @@index([createdAt])
+}
+
+// -----------------------------
+// Revenue Forecasting
+// -----------------------------
+
+model ForecastScenario {
+  id                       String   @id @default(cuid())
+  name                     String
+  description              String?
+  isDefault                Boolean  @default(false)
+
+  // Editable variables (financial knobs)
+  wholesaleBoxPrice        Decimal  @db.Decimal(10, 2)
+  cigarsPerBox             Int
+  landedCostPerCigar       Decimal  @db.Decimal(10, 4)
+  brokerCommissionPct      Decimal  @db.Decimal(5, 4) // 0.15 = 15%
+  numRetailAccounts        Int
+  boxesPerOpeningOrder     Int
+  reorderCycleWeeks        Int
+  avgBoxesPerReorder       Int
+  packagingImportBudget    Decimal  @db.Decimal(12, 2) @default(0)
+  eventSalesPerMonth       Decimal  @db.Decimal(12, 2) @default(0)
+  websiteOrdersPerMonth    Int      @default(0)
+  websiteAvgOrderValue     Decimal  @db.Decimal(10, 2) @default(0)
+  subscriptionMembers      Int      @default(0)
+  subscriptionMonthlyPrice Decimal  @db.Decimal(10, 2) @default(0)
+
+  createdBy                User?    @relation(fields: [createdById], references: [id])
+  createdById              String?
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([isDefault])
+}
+
+// -----------------------------
+// CRM
+// -----------------------------
+
+model Customer {
+  id                String          @id @default(cuid())
+  businessName      String
+  contactName       String?
+  email             String?
+  phone             String?
+  address           String?
+  customerType      CustomerType
+  source            LeadSource?
+  status            CustomerStatus  @default(LEAD)
+
+  assignedTo        User?           @relation("AssignedCustomers", fields: [assignedToId], references: [id])
+  assignedToId      String?
+
+  tags              String[]        @default([])
+  notes             String?         @db.Text
+  lastContactDate   DateTime?
+  nextFollowupDate  DateTime?
+
+  orders            Order[]
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([customerType])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([nextFollowupDate])
+}
+
+model Order {
+  id                  String                  @id @default(cuid())
+  customer            Customer                @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId          String
+
+  orderDate           DateTime                @default(now())
+  product             String                  // blend / SKU
+  boxQuantity         Int
+  pricePerBox         Decimal                 @db.Decimal(10, 2)
+  totalRevenue        Decimal                 @db.Decimal(12, 2)
+  brokerCommission    Decimal                 @db.Decimal(10, 2) @default(0)
+  costOfGoods         Decimal                 @db.Decimal(10, 2)
+  grossProfit         Decimal                 @db.Decimal(12, 2)
+  netProfit           Decimal                 @db.Decimal(12, 2)
+
+  paymentStatus       OrderPaymentStatus      @default(UNPAID)
+  fulfillmentStatus   OrderFulfillmentStatus  @default(PENDING)
+  reorderDueDate      DateTime?
+
+  notes               String?                 @db.Text
+
+  createdBy           User?                   @relation("OrderCreator", fields: [createdById], references: [id])
+  createdById         String?
+
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  @@index([customerId])
+  @@index([orderDate])
+  @@index([paymentStatus])
+  @@index([fulfillmentStatus])
+  @@index([reorderDueDate])
 }

@@ -8,10 +8,12 @@ import {
   TrendingUp,
   Heart,
   Library,
+  LineChart,
   Settings,
   Users,
   UserCog,
   Workflow,
+  Briefcase,
 } from "lucide-react";
 
 export type NavItem = {
@@ -55,6 +57,23 @@ export const navigation: NavSection[] = [
         href: "/calendar",
         icon: Calendar,
         description: "Schedule + campaigns",
+      },
+    ],
+  },
+  {
+    label: "Business",
+    items: [
+      {
+        label: "CRM & Orders",
+        href: "/crm",
+        icon: Briefcase,
+        description: "Retailers, lounges, distributors, orders",
+      },
+      {
+        label: "Forecasting",
+        href: "/forecasting",
+        icon: LineChart,
+        description: "Revenue, margins, scenarios",
       },
     ],
   },
