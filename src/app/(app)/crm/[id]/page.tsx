@@ -42,15 +42,21 @@ export default async function CustomerDetailPage({
   await requireUser();
   const { id } = await params;
 
-  const customer = await prisma.customer.findUnique({
-    where: { id },
-    include: {
-      orders: {
-        orderBy: { orderDate: "desc" },
+  const [customer, skus] = await Promise.all([
+    prisma.customer.findUnique({
+      where: { id },
+      include: {
+        orders: {
+          orderBy: { orderDate: "desc" },
+        },
+        assignedTo: { select: { fullName: true, email: true } },
       },
-      assignedTo: { select: { fullName: true, email: true } },
-    },
-  });
+    }),
+    prisma.inventoryItem.findMany({
+      where: { status: { not: "DISCONTINUED" } },
+      orderBy: [{ packagingType: "asc" }, { productName: "asc" }],
+    }),
+  ]);
 
   if (!customer) notFound();
 
@@ -132,6 +138,15 @@ export default async function CustomerDetailPage({
             <CardContent>
               <CustomerDetailClient
                 customerId={customer.id}
+                skus={skus.map((s) => ({
+                  id: s.id,
+                  sku: s.sku,
+                  productName: s.productName,
+                  packagesOnHand: s.packagesOnHand,
+                  unitsPerPackage: s.unitsPerPackage,
+                  wholesalePrice: Number(s.wholesalePrice.toString()),
+                  costPerUnit: Number(s.costPerUnit.toString()),
+                }))}
                 orders={customer.orders.map((o) => ({
                   id: o.id,
                   orderDate: o.orderDate.toISOString(),

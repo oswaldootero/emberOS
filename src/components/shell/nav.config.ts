@@ -9,6 +9,7 @@ import {
   Heart,
   Library,
   LineChart,
+  Package,
   Settings,
   Users,
   UserCog,
@@ -68,6 +69,12 @@ export const navigation: NavSection[] = [
         href: "/crm",
         icon: Briefcase,
         description: "Retailers, lounges, distributors, orders",
+      },
+      {
+        label: "Inventory",
+        href: "/inventory",
+        icon: Package,
+        description: "SKUs, stock levels, reorder alerts",
       },
       {
         label: "Forecasting",

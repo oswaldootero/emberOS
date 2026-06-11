@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { OrderForm } from "./order-form";
+import { OrderForm, type SkuOption } from "./order-form";
 import {
   updateOrderStatus,
   deleteOrder,
@@ -63,6 +63,7 @@ export function CustomerDetailClient({
   customerId,
   orders,
   orderDefaults,
+  skus = [],
 }: {
   customerId: string;
   orders: OrderRow[];
@@ -71,6 +72,7 @@ export function CustomerDetailClient({
     costPerBox: number;
     brokerCommissionPct: number;
   };
+  skus?: SkuOption[];
 }) {
   const [showOrderForm, setShowOrderForm] = useState(false);
 
@@ -102,6 +104,7 @@ export function CustomerDetailClient({
             <OrderForm
               customerId={customerId}
               defaults={orderDefaults}
+              skus={skus}
               onClose={() => setShowOrderForm(false)}
             />
           </motion.div>

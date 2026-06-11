@@ -24,9 +24,20 @@ const fmtUsd = (n: number) =>
     maximumFractionDigits: 2,
   }).format(n);
 
+export type SkuOption = {
+  id: string;
+  sku: string;
+  productName: string;
+  packagesOnHand: number;
+  unitsPerPackage: number;
+  wholesalePrice: number;
+  costPerUnit: number;
+};
+
 export function OrderForm({
   customerId,
   defaults,
+  skus = [],
   onClose,
 }: {
   customerId: string;
@@ -35,11 +46,13 @@ export function OrderForm({
     costPerBox: number;
     brokerCommissionPct: number;
   };
+  skus?: SkuOption[];
   onClose?: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  const [inventoryItemId, setInventoryItemId] = useState<string>("none");
   const [product, setProduct] = useState("Heaven's Leaf Signature");
   const [boxQuantity, setBoxQuantity] = useState(6);
   const [pricePerBox, setPricePerBox] = useState(defaults.pricePerBox);
@@ -47,6 +60,20 @@ export function OrderForm({
   const [brokerCommissionPct, setBrokerCommissionPct] = useState(
     defaults.brokerCommissionPct,
   );
+
+  function pickSku(value: string) {
+    setInventoryItemId(value);
+    if (value === "none") return;
+    const sku = skus.find((s) => s.id === value);
+    if (!sku) return;
+    setProduct(sku.productName);
+    setPricePerBox(sku.wholesalePrice);
+    setCostPerBox(sku.costPerUnit * sku.unitsPerPackage);
+  }
+
+  const selectedSku = skus.find((s) => s.id === inventoryItemId);
+  const wouldOverdraw =
+    selectedSku && boxQuantity > selectedSku.packagesOnHand;
   const [orderDate, setOrderDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
@@ -87,6 +114,7 @@ export function OrderForm({
         paymentStatus,
         fulfillmentStatus,
         notes: notes || null,
+        inventoryItemId: inventoryItemId === "none" ? null : inventoryItemId,
       });
       if (!r.ok) {
         toast.error(r.error);
@@ -101,6 +129,41 @@ export function OrderForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-white/[0.05] bg-ink-900/40 p-4">
       <div className="text-sm font-medium text-ivory">New order</div>
+
+      {skus.length > 0 && (
+        <div className="space-y-1.5">
+          <Label className="text-[10px]">
+            Inventory SKU{" "}
+            <span className="text-muted-foreground">(optional — auto-deducts stock)</span>
+          </Label>
+          <Select value={inventoryItemId} onValueChange={pickSku}>
+            <SelectTrigger>
+              <SelectValue placeholder="None — manual entry" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None — manual entry</SelectItem>
+              {skus.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  <div className="flex flex-col">
+                    <span>{s.productName}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {s.sku} · {s.packagesOnHand} pkg on hand · ${s.wholesalePrice.toFixed(2)}/pkg
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedSku && (
+            <div className="text-[10px] text-muted-foreground">
+              Stock: <span className={wouldOverdraw ? "text-red-300" : "text-emerald-300"}>
+                {selectedSku.packagesOnHand} pkg
+              </span>
+              {wouldOverdraw && " — order exceeds on-hand stock!"}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">

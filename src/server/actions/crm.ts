@@ -178,6 +178,8 @@ const OrderSchema = z.object({
     .default("PENDING"),
   reorderDueDate: z.string().optional().nullable(),
   notes: z.string().max(1000).optional().nullable(),
+  /** Optional SKU link — when set, inventory is auto-deducted */
+  inventoryItemId: z.string().optional().nullable(),
 });
 
 export type OrderResult =
@@ -201,24 +203,49 @@ export async function createOrder(input: unknown): Promise<OrderResult> {
   const grossProfit = totalRevenue - costOfGoods;
   const netProfit = grossProfit - brokerCommission;
 
-  const order = await prisma.order.create({
-    data: {
-      customerId: d.customerId,
-      orderDate: d.orderDate ? new Date(d.orderDate) : new Date(),
-      product: d.product,
-      boxQuantity: d.boxQuantity,
-      pricePerBox: d.pricePerBox,
-      totalRevenue,
-      brokerCommission,
-      costOfGoods,
-      grossProfit,
-      netProfit,
-      paymentStatus: d.paymentStatus,
-      fulfillmentStatus: d.fulfillmentStatus,
-      reorderDueDate: d.reorderDueDate ? new Date(d.reorderDueDate) : null,
-      notes: d.notes || null,
-      createdById: user.id,
-    },
+  // If linked to an SKU, perform order create + inventory deduct + audit
+  // adjustment as a single transaction — never leave inventory in a half
+  // state.
+  const order = await prisma.$transaction(async (tx) => {
+    const created = await tx.order.create({
+      data: {
+        customerId: d.customerId,
+        orderDate: d.orderDate ? new Date(d.orderDate) : new Date(),
+        product: d.product,
+        boxQuantity: d.boxQuantity,
+        pricePerBox: d.pricePerBox,
+        totalRevenue,
+        brokerCommission,
+        costOfGoods,
+        grossProfit,
+        netProfit,
+        paymentStatus: d.paymentStatus,
+        fulfillmentStatus: d.fulfillmentStatus,
+        reorderDueDate: d.reorderDueDate ? new Date(d.reorderDueDate) : null,
+        notes: d.notes || null,
+        createdById: user.id,
+        inventoryItemId: d.inventoryItemId || null,
+      },
+    });
+
+    if (d.inventoryItemId) {
+      await tx.inventoryItem.update({
+        where: { id: d.inventoryItemId },
+        data: { packagesOnHand: { decrement: d.boxQuantity } },
+      });
+      await tx.inventoryAdjustment.create({
+        data: {
+          inventoryItemId: d.inventoryItemId,
+          packagesDelta: -d.boxQuantity,
+          reason: "SALE",
+          orderId: created.id,
+          createdById: user.id,
+          notes: `Auto-deducted on order create`,
+        },
+      });
+    }
+
+    return created;
   });
 
   // Update the customer's lastContactDate to today on order create
@@ -240,6 +267,10 @@ export async function createOrder(input: unknown): Promise<OrderResult> {
 
   revalidatePath("/crm");
   revalidatePath(`/crm/${d.customerId}`);
+  if (d.inventoryItemId) {
+    revalidatePath("/inventory");
+    revalidatePath(`/inventory/${d.inventoryItemId}`);
+  }
   return { ok: true, id: order.id };
 }
 
@@ -275,13 +306,41 @@ export async function deleteOrder(orderId: string): Promise<OrderResult> {
   if (user.role !== "ADMIN" && order.createdById !== user.id) {
     return { ok: false, error: "Only admins or the creator can delete." };
   }
-  await prisma.order.delete({ where: { id: orderId } });
+
+  // Atomic: restore inventory + delete order. The original SALE
+  // adjustment cascade-detaches (orderId becomes null) — we add a
+  // RETURN adjustment representing the restock so the audit trail
+  // shows the round-trip.
+  await prisma.$transaction(async (tx) => {
+    if (order.inventoryItemId) {
+      await tx.inventoryItem.update({
+        where: { id: order.inventoryItemId },
+        data: { packagesOnHand: { increment: order.boxQuantity } },
+      });
+      await tx.inventoryAdjustment.create({
+        data: {
+          inventoryItemId: order.inventoryItemId,
+          packagesDelta: order.boxQuantity,
+          reason: "RETURN",
+          createdById: user.id,
+          notes: `Auto-restored on order delete (was order ${orderId})`,
+        },
+      });
+    }
+    await tx.order.delete({ where: { id: orderId } });
+  });
+
   await audit("crm.order_deleted", {
     actorId: user.id,
     entityType: "Order",
     entityId: orderId,
+    diff: { restoredInventory: Boolean(order.inventoryItemId) },
   });
   revalidatePath("/crm");
   revalidatePath(`/crm/${order.customerId}`);
+  if (order.inventoryItemId) {
+    revalidatePath("/inventory");
+    revalidatePath(`/inventory/${order.inventoryItemId}`);
+  }
   return { ok: true, id: orderId };
 }

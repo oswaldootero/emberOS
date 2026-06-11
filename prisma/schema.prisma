@@ -150,6 +150,40 @@ enum OrderFulfillmentStatus {
   CANCELLED
 }
 
+enum BlendType {
+  MADURO
+  CONNECTICUT
+  HABANO
+  COSECHA_DORADA
+  CUSTOM
+}
+
+enum PackagingType {
+  BOX
+  SINGLE
+  THREE_PACK
+  FIVE_PACK
+  BUNDLE
+}
+
+enum InventoryStatus {
+  ACTIVE
+  LOW_STOCK
+  OUT_OF_STOCK
+  DISCONTINUED
+}
+
+enum AdjustmentReason {
+  SALE
+  SAMPLE
+  DAMAGE
+  EVENT
+  RETURN
+  CORRECTION
+  PURCHASE
+  TRANSFER
+}
+
 enum WorkflowTrigger {
   CONTENT_PUBLISHED
   MANUAL
@@ -200,6 +234,7 @@ model User {
   forecastScenarios   ForecastScenario[]
   assignedCustomers   Customer[]        @relation("AssignedCustomers")
   createdOrders       Order[]           @relation("OrderCreator")
+  inventoryAdjustments InventoryAdjustment[]
 
   @@index([role])
   @@index([supabaseId])
@@ -845,6 +880,13 @@ model Order {
 
   notes               String?                 @db.Text
 
+  // Optional link to inventory SKU — when set, the order deducts stock
+  // and creates a SALE InventoryAdjustment automatically
+  inventoryItem       InventoryItem?          @relation(fields: [inventoryItemId], references: [id])
+  inventoryItemId     String?
+
+  adjustments         InventoryAdjustment[]
+
   createdBy           User?                   @relation("OrderCreator", fields: [createdById], references: [id])
   createdById         String?
 
@@ -854,6 +896,77 @@ model Order {
   @@index([customerId])
   @@index([orderDate])
   @@index([paymentStatus])
+  @@index([inventoryItemId])
   @@index([fulfillmentStatus])
   @@index([reorderDueDate])
+}
+
+// -----------------------------
+// Inventory
+// -----------------------------
+
+model InventoryItem {
+  id                      String                @id @default(cuid())
+  sku                     String                @unique
+  productName             String
+  blend                   BlendType?
+  blendCustom             String?               // for blend=CUSTOM
+
+  packagingType           PackagingType
+  unitsPerPackage         Int                   // e.g. 10 cigars per box
+
+  packagesOnHand          Int                   @default(0)
+
+  costPerUnit             Decimal               @db.Decimal(10, 4) // per cigar
+  wholesalePrice          Decimal               @db.Decimal(10, 2) // per package
+  retailPrice             Decimal               @db.Decimal(10, 2) @default(0)
+
+  reorderThreshold        Int                   @default(0)   // packages
+  preferredReorderQty     Int                   @default(0)   // packages
+
+  supplier                String?
+  location                String?
+  status                  InventoryStatus       @default(ACTIVE)
+
+  // Future-ready
+  barcode                 String?
+  notes                   String?               @db.Text
+
+  adjustments             InventoryAdjustment[]
+  orders                  Order[]
+
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  @@index([status])
+  @@index([blend])
+  @@index([packagingType])
+  @@index([sku])
+}
+
+model InventoryAdjustment {
+  id              String              @id @default(cuid())
+
+  inventoryItem   InventoryItem       @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+
+  // Positive = packages added (PURCHASE/RETURN/CORRECTION up)
+  // Negative = packages removed (SALE/SAMPLE/DAMAGE/EVENT/CORRECTION down)
+  packagesDelta   Int
+  reason          AdjustmentReason
+
+  notes           String?             @db.Text
+
+  // Optional link back to triggering order
+  order           Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderId         String?
+
+  createdBy       User?               @relation(fields: [createdById], references: [id])
+  createdById     String?
+
+  createdAt       DateTime            @default(now())
+
+  @@index([inventoryItemId, createdAt])
+  @@index([reason])
+  @@index([orderId])
 }
