@@ -16,8 +16,14 @@ import {
 import { OrderForm, type SkuOption } from "./order-form";
 import {
   updateOrderStatus,
+  updateOrder,
   deleteOrder,
 } from "@/server/actions/crm";
+import {
+  InlineText,
+  InlineNumber,
+  InlineDate,
+} from "@/components/ui/inline-edit";
 
 const fmtUsd = (v: number) =>
   Intl.NumberFormat("en-US", {
@@ -200,8 +206,58 @@ function OrderCard({ order }: { order: OrderRow }) {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-white/[0.04] p-3 space-y-3 text-xs">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="border-t border-white/[0.04] p-3 space-y-4 text-xs">
+              {/* Editable line items */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Product</div>
+                  <div className="text-ivory">
+                    <InlineText
+                      value={order.product}
+                      onSave={async (v) => updateOrder(order.id, { product: v })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Order date</div>
+                  <div className="text-ivory">
+                    <InlineDate
+                      value={order.orderDate}
+                      onSave={async (v) =>
+                        updateOrder(order.id, { orderDate: v ?? undefined })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Boxes</div>
+                  <div className="text-ivory">
+                    <InlineNumber
+                      value={order.boxQuantity}
+                      min={1}
+                      onSave={async (v) =>
+                        updateOrder(order.id, { boxQuantity: v })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Price / box</div>
+                  <div className="text-ivory">
+                    <InlineNumber
+                      value={order.pricePerBox}
+                      min={0}
+                      step="0.01"
+                      onSave={async (v) =>
+                        updateOrder(order.id, { pricePerBox: v })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Computed financials */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 border-t border-white/[0.04]">
                 <KV label="Revenue" value={fmtUsd(order.totalRevenue)} />
                 <KV label="COGS" value={fmtUsd(order.costOfGoods)} />
                 <KV label="Broker fee" value={fmtUsd(order.brokerCommission)} accent="text-amber-300" />
@@ -242,19 +298,34 @@ function OrderCard({ order }: { order: OrderRow }) {
                 </div>
               </div>
 
-              {order.reorderDueDate && (
-                <div className="text-[11px] text-muted-foreground">
-                  Reorder due:{" "}
-                  <span className="text-ivory">
-                    {new Date(order.reorderDueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </span>
+              <div className="space-y-1">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Reorder due</div>
+                <div className="text-ivory text-[11px]">
+                  <InlineDate
+                    value={order.reorderDueDate}
+                    placeholder="Set reorder date"
+                    onSave={async (v) =>
+                      updateOrder(order.id, { reorderDueDate: v })
+                    }
+                  />
                 </div>
-              )}
-              {order.notes && (
-                <div className="text-[11px] text-ivory/80 whitespace-pre-wrap border-l-2 border-ember-500/30 pl-3">
-                  {order.notes}
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Notes</div>
+                <div className="text-ivory/80 text-[11px] border-l-2 border-ember-500/30 pl-3">
+                  <InlineText
+                    value={order.notes ?? ""}
+                    placeholder="Add a note"
+                    multiline
+                    onSave={async (v) => updateOrder(order.id, { notes: v || null })}
+                  />
                 </div>
-              )}
+              </div>
+
+              <p className="text-[10px] text-muted-foreground italic">
+                Tip: click any field to edit. Changing box quantity automatically reconciles inventory.
+              </p>
 
               <div className="flex justify-end">
                 <Button variant="ghost" size="sm" onClick={handleDelete} disabled={pending} className="text-muted-foreground hover:text-red-300">

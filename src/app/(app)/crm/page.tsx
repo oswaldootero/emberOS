@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   CalendarClock,
-  ExternalLink,
   Plus,
   Search,
   TrendingUp,
@@ -18,11 +17,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { CustomerStatusBadge, pretty } from "@/components/crm/status-badge";
+import { pretty } from "@/components/crm/status-badge";
+import { CustomerRow } from "@/components/crm/customer-row";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { loadCRMSnapshot } from "@/server/crm";
-import { cn, compactNumber, relativeTime } from "@/lib/utils";
+import { cn, compactNumber } from "@/lib/utils";
 
 export const metadata = { title: "CRM" };
 export const dynamic = "force-dynamic";
@@ -278,6 +278,7 @@ export default async function CRMPage({
               No customers match. Try different filters, or add your first.
             </div>
           ) : (
+            <>
             <ul className="divide-y divide-white/[0.04]">
               {customers.map((c) => {
                 const total = c.orders.reduce(
@@ -285,31 +286,32 @@ export default async function CRMPage({
                   0,
                 );
                 return (
-                  <li key={c.id} className="py-3">
-                    <Link href={`/crm/${c.id}`} className="flex items-center gap-3 hover:bg-white/[0.02] -mx-2 px-2 py-1 rounded">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-ivory truncate">{c.businessName}</div>
-                        <div className="text-[10px] text-muted-foreground truncate">
-                          {c.contactName ?? "—"}
-                          {c.email && <span> · {c.email}</span>}
-                          {c.lastContactDate && (
-                            <span> · last contact {relativeTime(c.lastContactDate)}</span>
-                          )}
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-[10px]">{pretty(c.customerType)}</Badge>
-                      <CustomerStatusBadge status={c.status} />
-                      {c.orders.length > 0 && (
-                        <div className="text-[10px] text-ember-200 tabular-nums shrink-0">
-                          {c.orders.length} orders · {fmtUsd(total)}
-                        </div>
-                      )}
-                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                    </Link>
-                  </li>
+                  <CustomerRow
+                    key={c.id}
+                    row={{
+                      id: c.id,
+                      businessName: c.businessName,
+                      contactName: c.contactName,
+                      email: c.email,
+                      customerType: c.customerType,
+                      status: c.status,
+                      lastContactDate: c.lastContactDate
+                        ? c.lastContactDate.toISOString()
+                        : null,
+                      nextFollowupDate: c.nextFollowupDate
+                        ? c.nextFollowupDate.toISOString()
+                        : null,
+                      ordersCount: c.orders.length,
+                      ordersTotal: total,
+                    }}
+                  />
                 );
               })}
             </ul>
+            <p className="text-[10px] text-muted-foreground mt-3 italic">
+              Tip: click any status badge or follow-up date to edit inline.
+            </p>
+            </>
           )}
         </CardContent>
       </Card>

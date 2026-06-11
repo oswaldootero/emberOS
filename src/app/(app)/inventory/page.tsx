@@ -23,6 +23,7 @@ import {
   InventoryStatusBadge,
   pretty,
 } from "@/components/inventory/status-badge";
+import { InventoryRow } from "@/components/inventory/inventory-row";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { loadInventorySnapshot } from "@/server/inventory";
@@ -228,53 +229,16 @@ export default async function InventoryPage() {
               Nothing in inventory yet. Add your first SKU above.
             </div>
           ) : (
-            <ul className="divide-y divide-white/[0.04]">
-              {rows.map((r) => {
-                const isLow = r.computedStatus === "LOW_STOCK";
-                const isOut = r.computedStatus === "OUT_OF_STOCK";
-                return (
-                  <li key={r.id}>
-                    <Link
-                      href={`/inventory/${r.id}`}
-                      className={cn(
-                        "flex items-center gap-3 py-3 px-2 -mx-2 rounded hover:bg-white/[0.02]",
-                        (isLow || isOut) && "bg-amber-500/[0.03]",
-                      )}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-ivory truncate">{r.productName}</span>
-                          <code className="text-[10px] text-muted-foreground font-mono">{r.sku}</code>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">
-                          {r.blend && <span>{pretty(r.blend)} · </span>}
-                          {pretty(r.packagingType)} · {r.unitsPerPackage}/pkg
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-ivory tabular-nums">
-                          {r.packagesOnHand} pkg
-                        </div>
-                        <div className="text-[10px] text-muted-foreground tabular-nums">
-                          {fmtInt(r.unitsOnHand)} cigars
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-sm text-ember-200 tabular-nums">
-                          {fmtUsd(r.inventoryValueWholesale)}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">at wholesale</div>
-                      </div>
-                      <InventoryStatusBadge status={r.computedStatus} />
-                      {(isLow || isOut) && (
-                        <AlertTriangle className={cn("h-3.5 w-3.5", isOut ? "text-red-300" : "text-amber-300")} />
-                      )}
-                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <>
+              <ul className="divide-y divide-white/[0.04]">
+                {rows.map((r) => (
+                  <InventoryRow key={r.id} row={r} />
+                ))}
+              </ul>
+              <p className="text-[10px] text-muted-foreground mt-3 italic">
+                Tip: click any number or status to edit inline.
+              </p>
+            </>
           )}
         </CardContent>
       </Card>

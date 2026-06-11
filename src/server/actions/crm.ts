@@ -274,6 +274,147 @@ export async function createOrder(input: unknown): Promise<OrderResult> {
   return { ok: true, id: order.id };
 }
 
+// ─────────────────────────────────────────────────────────────────
+// updateOrder — full edit with inventory + financial reconciliation
+// ─────────────────────────────────────────────────────────────────
+
+const OrderUpdateSchema = z.object({
+  orderDate: z.string().optional(),
+  product: z.string().min(1).max(120).optional(),
+  boxQuantity: z.number().int().positive().optional(),
+  pricePerBox: z.number().nonnegative().optional(),
+  costPerBox: z.number().nonnegative().optional(),
+  brokerCommissionPct: z.number().min(0).max(1).optional(),
+  paymentStatus: z
+    .enum(["UNPAID", "PAID", "PARTIAL", "OVERDUE", "REFUNDED"])
+    .optional(),
+  fulfillmentStatus: z
+    .enum(["PENDING", "IN_PROGRESS", "SHIPPED", "DELIVERED", "CANCELLED"])
+    .optional(),
+  reorderDueDate: z.string().optional().nullable(),
+  notes: z.string().max(1000).optional().nullable(),
+});
+
+/**
+ * Update any order field, atomically reconciling:
+ *  - inventory delta when boxQuantity changes (and SKU is linked):
+ *    adjusts packagesOnHand by the delta + writes a CORRECTION row.
+ *  - financial fields (revenue/profit/commission) when any input changes,
+ *    using existing values for fields not in the patch.
+ */
+export async function updateOrder(
+  orderId: string,
+  input: unknown,
+): Promise<OrderResult> {
+  const user = await requireUser();
+  const parsed = OrderUpdateSchema.safeParse(input);
+  if (!parsed.success) {
+    const first = parsed.error.errors[0];
+    return {
+      ok: false,
+      error: first ? `${first.path.join(".")}: ${first.message}` : "Invalid input",
+    };
+  }
+  const patch = parsed.data;
+
+  const existing = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!existing) return { ok: false, error: "Order not found." };
+
+  // Pull existing decimals into numbers for the math
+  const exPrice = Number(existing.pricePerBox.toString());
+  const exQty = existing.boxQuantity;
+  const exCommissionPct = existing.brokerCommission && existing.totalRevenue
+    ? Number(existing.brokerCommission.toString()) /
+      Number(existing.totalRevenue.toString())
+    : 0.15;
+  const exCostPerBox = exQty > 0
+    ? Number(existing.costOfGoods.toString()) / exQty
+    : 0;
+
+  const nextQty = patch.boxQuantity ?? exQty;
+  const nextPrice = patch.pricePerBox ?? exPrice;
+  const nextCostPerBox = patch.costPerBox ?? exCostPerBox;
+  const nextCommissionPct = patch.brokerCommissionPct ?? exCommissionPct;
+
+  const totalRevenue = nextQty * nextPrice;
+  const brokerCommission = totalRevenue * nextCommissionPct;
+  const costOfGoods = nextQty * nextCostPerBox;
+  const grossProfit = totalRevenue - costOfGoods;
+  const netProfit = grossProfit - brokerCommission;
+  const qtyDelta = nextQty - exQty;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          orderDate: patch.orderDate ? new Date(patch.orderDate) : undefined,
+          product: patch.product,
+          boxQuantity: nextQty,
+          pricePerBox: nextPrice,
+          totalRevenue,
+          brokerCommission,
+          costOfGoods,
+          grossProfit,
+          netProfit,
+          paymentStatus: patch.paymentStatus,
+          fulfillmentStatus: patch.fulfillmentStatus,
+          reorderDueDate:
+            patch.reorderDueDate === undefined
+              ? undefined
+              : patch.reorderDueDate
+                ? new Date(patch.reorderDueDate)
+                : null,
+          notes: patch.notes === undefined ? undefined : patch.notes || null,
+        },
+      });
+
+      // If quantity changed and the order is linked to a SKU, reconcile
+      // inventory and write a CORRECTION adjustment so the audit trail
+      // shows the round-trip.
+      if (qtyDelta !== 0 && existing.inventoryItemId) {
+        await tx.inventoryItem.update({
+          where: { id: existing.inventoryItemId },
+          data: { packagesOnHand: { decrement: qtyDelta } },
+        });
+        await tx.inventoryAdjustment.create({
+          data: {
+            inventoryItemId: existing.inventoryItemId,
+            packagesDelta: -qtyDelta,
+            reason: "CORRECTION",
+            orderId,
+            createdById: user.id,
+            notes: `Order qty changed ${exQty} → ${nextQty}`,
+          },
+        });
+      }
+    });
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Update failed",
+    };
+  }
+
+  await audit("crm.order_updated", {
+    actorId: user.id,
+    entityType: "Order",
+    entityId: orderId,
+    diff: {
+      qtyChange: qtyDelta,
+      newRevenue: totalRevenue,
+    },
+  });
+
+  revalidatePath("/crm");
+  revalidatePath(`/crm/${existing.customerId}`);
+  if (existing.inventoryItemId) {
+    revalidatePath("/inventory");
+    revalidatePath(`/inventory/${existing.inventoryItemId}`);
+  }
+  return { ok: true, id: orderId };
+}
+
 export async function updateOrderStatus(
   orderId: string,
   patch: {

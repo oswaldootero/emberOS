@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { InlineText } from "@/components/ui/inline-edit";
 import {
   MonthlyRevenueChart,
   ChannelBreakdownPie,
@@ -214,6 +215,51 @@ export function ForecastingClient({
             )}
             Save
           </Button>
+        </div>
+      </div>
+
+      {/* Inline-editable scenario name + description */}
+      <div className="rounded-lg border border-white/[0.05] bg-ink-900/30 p-4 space-y-1.5">
+        <div className="flex items-center gap-2">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Scenario name
+          </div>
+          {active.isDefault && (
+            <Badge variant="gold" className="text-[9px]">default</Badge>
+          )}
+        </div>
+        <div className="font-display text-xl text-ivory">
+          <InlineText
+            value={active.name}
+            onSave={async (v) => {
+              const r = await updateScenario(active.id, { name: v });
+              if (r.ok) {
+                setScenarios((arr) =>
+                  arr.map((s) => (s.id === active.id ? { ...s, name: v } : s)),
+                );
+              }
+              return r;
+            }}
+          />
+        </div>
+        <div className="text-xs text-muted-foreground">
+          <InlineText
+            value={active.description ?? ""}
+            placeholder="Add a short description (what makes this scenario different)"
+            onSave={async (v) => {
+              const r = await updateScenario(active.id, {
+                description: v || null,
+              });
+              if (r.ok) {
+                setScenarios((arr) =>
+                  arr.map((s) =>
+                    s.id === active.id ? { ...s, description: v || null } : s,
+                  ),
+                );
+              }
+              return r;
+            }}
+          />
         </div>
       </div>
 
