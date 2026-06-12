@@ -235,6 +235,7 @@ model User {
   assignedCustomers   Customer[]        @relation("AssignedCustomers")
   createdOrders       Order[]           @relation("OrderCreator")
   inventoryAdjustments InventoryAdjustment[]
+  paymentLinks        PaymentLink[]     @relation("PaymentLinkCreator")
 
   @@index([role])
   @@index([supabaseId])
@@ -849,6 +850,8 @@ model Customer {
   nextFollowupDate  DateTime?
 
   orders            Order[]
+  paymentLinks      PaymentLink[]
+  cardsOnFile       CardOnFile[]
 
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
@@ -892,6 +895,8 @@ model Order {
 
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
+
+  paymentLinks        PaymentLink[]
 
   @@index([customerId])
   @@index([orderDate])
@@ -969,4 +974,71 @@ model InventoryAdjustment {
   @@index([inventoryItemId, createdAt])
   @@index([reason])
   @@index([orderId])
+}
+
+// -----------------------------
+// Payments — Helcim integration
+// -----------------------------
+// Cards are never stored in the EmberOS DB. We only hold Helcim's
+// tokenized references (customerCode + cardToken) so a charge can be
+// re-run later. PCI scope: SAQ-A — the card iframe is hosted by Helcim.
+
+enum PaymentLinkStatus {
+  PENDING         // link created, waiting for customer to enter card
+  CARD_CAPTURED   // customer entered a card; token stored on file
+  CHARGED         // the card was charged successfully
+  EXPIRED         // expiresAt passed without capture
+  VOIDED          // sales rep cancelled the link
+}
+
+model PaymentLink {
+  id              String            @id @default(cuid())
+  code            String            @unique          // short URL slug (nanoid)
+
+  customer        Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId      String
+
+  order           Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderId         String?
+
+  amountCents     Int                                // stored in cents to dodge Decimal/float mismatch
+  status          PaymentLinkStatus @default(PENDING)
+  expiresAt       DateTime
+
+  capturedCard    CardOnFile?       @relation(fields: [capturedCardId], references: [id])
+  capturedCardId  String?
+
+  createdBy       User              @relation("PaymentLinkCreator", fields: [createdById], references: [id])
+  createdById     String
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([code])
+  @@index([customerId])
+  @@index([orderId])
+  @@index([status])
+}
+
+model CardOnFile {
+  id                 String        @id @default(cuid())
+
+  customer           Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId         String
+
+  helcimCustomerCode String                          // Helcim's vault customer ID
+  helcimCardToken    String                          // per-card token; NOT the PAN
+
+  brand              String                          // "visa" | "mastercard" | "amex" | ...
+  last4              String
+  expMonth           Int
+  expYear            Int
+
+  archivedAt         DateTime?                       // soft-delete if customer asks to remove
+  createdAt          DateTime      @default(now())
+
+  paymentLinks       PaymentLink[]
+
+  @@index([customerId])
+  @@index([archivedAt])
 }

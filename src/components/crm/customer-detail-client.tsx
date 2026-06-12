@@ -24,6 +24,11 @@ import {
   InlineNumber,
   InlineDate,
 } from "@/components/ui/inline-edit";
+import {
+  OrderPaymentControls,
+  type ActiveLinkSummary,
+  type CardSummary,
+} from "@/components/payments/order-payment-controls";
 
 const fmtUsd = (v: number) =>
   Intl.NumberFormat("en-US", {
@@ -47,6 +52,7 @@ export type OrderRow = {
   fulfillmentStatus: string;
   reorderDueDate: string | null;
   notes: string | null;
+  activeLink: ActiveLinkSummary | null;
 };
 
 const PAYMENT_VARIANT: Record<string, "success" | "warning" | "outline" | "destructive"> = {
@@ -70,6 +76,7 @@ export function CustomerDetailClient({
   orders,
   orderDefaults,
   skus = [],
+  cardsOnFile = [],
 }: {
   customerId: string;
   orders: OrderRow[];
@@ -79,6 +86,7 @@ export function CustomerDetailClient({
     brokerCommissionPct: number;
   };
   skus?: SkuOption[];
+  cardsOnFile?: CardSummary[];
 }) {
   const [showOrderForm, setShowOrderForm] = useState(false);
 
@@ -119,14 +127,27 @@ export function CustomerDetailClient({
 
       <div className="space-y-2">
         {orders.map((o) => (
-          <OrderCard key={o.id} order={o} />
+          <OrderCard
+            key={o.id}
+            order={o}
+            customerId={customerId}
+            cardsOnFile={cardsOnFile}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function OrderCard({ order }: { order: OrderRow }) {
+function OrderCard({
+  order,
+  customerId,
+  cardsOnFile,
+}: {
+  order: OrderRow;
+  customerId: string;
+  cardsOnFile: CardSummary[];
+}) {
   const [expanded, setExpanded] = useState(false);
   const [pending, startTransition] = useTransition();
   const [payment, setPayment] = useState(order.paymentStatus);
@@ -268,6 +289,15 @@ function OrderCard({ order }: { order: OrderRow }) {
                   accent={order.netProfit > 0 ? "text-emerald-300" : "text-red-300"}
                 />
               </div>
+
+              <OrderPaymentControls
+                orderId={order.id}
+                customerId={customerId}
+                totalRevenue={order.totalRevenue}
+                paymentStatus={payment}
+                activeLink={order.activeLink}
+                cardsOnFile={cardsOnFile}
+              />
 
               <div className="grid sm:grid-cols-2 gap-3 items-end">
                 <div className="space-y-1.5">

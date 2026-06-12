@@ -7,6 +7,7 @@ const PUBLIC_PATHS = [
   "/auth",
   "/api/cron",
   "/api/webhooks",
+  "/pay",
 ];
 
 export async function middleware(req: NextRequest) {

@@ -48,6 +48,16 @@ export default async function CustomerDetailPage({
       include: {
         orders: {
           orderBy: { orderDate: "desc" },
+          include: {
+            paymentLinks: {
+              orderBy: { createdAt: "desc" },
+              include: { capturedCard: true },
+            },
+          },
+        },
+        cardsOnFile: {
+          where: { archivedAt: null },
+          orderBy: { createdAt: "desc" },
         },
         assignedTo: { select: { fullName: true, email: true } },
       },
@@ -147,22 +157,50 @@ export default async function CustomerDetailPage({
                   wholesalePrice: Number(s.wholesalePrice.toString()),
                   costPerUnit: Number(s.costPerUnit.toString()),
                 }))}
-                orders={customer.orders.map((o) => ({
-                  id: o.id,
-                  orderDate: o.orderDate.toISOString(),
-                  product: o.product,
-                  boxQuantity: o.boxQuantity,
-                  pricePerBox: Number(o.pricePerBox.toString()),
-                  totalRevenue: Number(o.totalRevenue.toString()),
-                  brokerCommission: Number(o.brokerCommission.toString()),
-                  costOfGoods: Number(o.costOfGoods.toString()),
-                  grossProfit: Number(o.grossProfit.toString()),
-                  netProfit: Number(o.netProfit.toString()),
-                  paymentStatus: o.paymentStatus,
-                  fulfillmentStatus: o.fulfillmentStatus,
-                  reorderDueDate: o.reorderDueDate?.toISOString() ?? null,
-                  notes: o.notes,
+                cardsOnFile={customer.cardsOnFile.map((c) => ({
+                  id: c.id,
+                  brand: c.brand,
+                  last4: c.last4,
+                  expMonth: c.expMonth,
+                  expYear: c.expYear,
                 }))}
+                orders={customer.orders.map((o) => {
+                  const activeLink = o.paymentLinks.find(
+                    (l) => l.status === "PENDING" || l.status === "CARD_CAPTURED",
+                  );
+                  return {
+                    id: o.id,
+                    orderDate: o.orderDate.toISOString(),
+                    product: o.product,
+                    boxQuantity: o.boxQuantity,
+                    pricePerBox: Number(o.pricePerBox.toString()),
+                    totalRevenue: Number(o.totalRevenue.toString()),
+                    brokerCommission: Number(o.brokerCommission.toString()),
+                    costOfGoods: Number(o.costOfGoods.toString()),
+                    grossProfit: Number(o.grossProfit.toString()),
+                    netProfit: Number(o.netProfit.toString()),
+                    paymentStatus: o.paymentStatus,
+                    fulfillmentStatus: o.fulfillmentStatus,
+                    reorderDueDate: o.reorderDueDate?.toISOString() ?? null,
+                    notes: o.notes,
+                    activeLink: activeLink
+                      ? {
+                          id: activeLink.id,
+                          code: activeLink.code,
+                          status: activeLink.status,
+                          capturedCard: activeLink.capturedCard
+                            ? {
+                                id: activeLink.capturedCard.id,
+                                brand: activeLink.capturedCard.brand,
+                                last4: activeLink.capturedCard.last4,
+                                expMonth: activeLink.capturedCard.expMonth,
+                                expYear: activeLink.capturedCard.expYear,
+                              }
+                            : null,
+                        }
+                      : null,
+                  };
+                })}
                 orderDefaults={defaults}
               />
             </CardContent>
