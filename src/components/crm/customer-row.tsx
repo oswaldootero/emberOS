@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { Edit3, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { InlineSelect, InlineDate } from "@/components/ui/inline-edit";
 import { CustomerStatusBadge, pretty } from "./status-badge";
@@ -38,10 +38,29 @@ export type CustomerRowProps = {
   ordersTotal: number;
 };
 
-export function CustomerRow({ row }: { row: CustomerRowProps }) {
+export function CustomerRow({
+  row,
+  selected,
+  onSelectChange,
+  showEdit,
+}: {
+  row: CustomerRowProps;
+  selected?: boolean;
+  onSelectChange?: (checked: boolean) => void;
+  showEdit?: boolean;
+}) {
   return (
     <li className="py-3">
       <div className="flex items-center gap-3 hover:bg-white/[0.02] -mx-2 px-2 py-1 rounded">
+        {onSelectChange && (
+          <input
+            type="checkbox"
+            checked={Boolean(selected)}
+            onChange={(e) => onSelectChange(e.target.checked)}
+            aria-label={`Select ${row.businessName}`}
+            className="h-4 w-4 shrink-0 rounded border-white/20 bg-transparent accent-[#c69437] cursor-pointer"
+          />
+        )}
         <Link
           href={`/crm/${row.id}`}
           className="flex-1 min-w-0 hover:text-ember-200"
@@ -101,6 +120,16 @@ export function CustomerRow({ row }: { row: CustomerRowProps }) {
           <div className="text-[10px] text-ember-200 tabular-nums shrink-0">
             {row.ordersCount} orders · {fmtUsd(row.ordersTotal)}
           </div>
+        )}
+
+        {showEdit && (
+          <Link
+            href={`/crm/${row.id}/edit`}
+            className="shrink-0 p-1.5 rounded text-muted-foreground hover:text-ivory hover:bg-white/[0.04] transition"
+            aria-label={`Edit ${row.businessName}`}
+          >
+            <Edit3 className="h-3.5 w-3.5" />
+          </Link>
         )}
       </div>
     </li>

@@ -320,6 +320,43 @@ export async function duplicateSale(id: string): Promise<SaleActionResult> {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Bulk operations
+// ─────────────────────────────────────────────────────────────────
+
+export async function bulkVoidSales(ids: string[]): Promise<SaleActionResult> {
+  const user = await requireUser();
+  if (!ids.length) return { ok: false, error: "Nothing selected." };
+  const r = await prisma.sale.updateMany({
+    where: { id: { in: ids }, status: { not: "CANCELLED" } },
+    data: { status: "CANCELLED" },
+  });
+  await audit("sales.bulk_voided", {
+    actorId: user.id,
+    entityType: "Sale",
+    diff: { count: r.count, ids },
+  });
+  revalidatePath("/sales");
+  revalidatePath("/crm");
+  return { ok: true, id: String(r.count) };
+}
+
+/** Hard delete — admin only. Removes the invoices and their line items. */
+export async function bulkDeleteSales(ids: string[]): Promise<SaleActionResult> {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") return { ok: false, error: "Admin only." };
+  if (!ids.length) return { ok: false, error: "Nothing selected." };
+  const r = await prisma.sale.deleteMany({ where: { id: { in: ids } } });
+  await audit("sales.bulk_deleted", {
+    actorId: user.id,
+    entityType: "Sale",
+    diff: { count: r.count, ids },
+  });
+  revalidatePath("/sales");
+  revalidatePath("/crm");
+  return { ok: true, id: String(r.count) };
+}
+
+// ─────────────────────────────────────────────────────────────────
 // deleteSale — admins only, and only drafts. Everything else is void.
 // ─────────────────────────────────────────────────────────────────
 

@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { pretty } from "@/components/crm/status-badge";
-import { CustomerRow } from "@/components/crm/customer-row";
+import { CustomerListClient } from "@/components/crm/customer-list-client";
 import { Pagination, SortableHeader } from "@/components/ui/data-table";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
@@ -50,7 +50,7 @@ export default async function CRMPage({
     page?: string;
   }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const sp = await searchParams;
   const q = sp.q ?? "";
   const filterType = sp.type ?? "";
@@ -132,28 +132,7 @@ export default async function CRMPage({
       </div>
 
       {/* Rollups */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Leads by source</CardTitle>
-            <CardDescription>Where new customers are coming from.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {snapshot.leadsBySource.length === 0 ? (
-              <EmptyHint label="No leads tagged with a source yet." />
-            ) : (
-              <ul className="space-y-1.5">
-                {snapshot.leadsBySource.map((row) => (
-                  <li key={row.source} className="flex items-center justify-between text-sm">
-                    <span className="text-ivory">{pretty(row.source)}</span>
-                    <Badge variant="outline" className="text-[10px]">{row.count}</Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
+      <div className="grid lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Revenue by channel</CardTitle>
@@ -333,8 +312,9 @@ export default async function CRMPage({
             </div>
           ) : (
             <>
-            <ul className="divide-y divide-white/[0.04]">
-              {customers.map((c) => {
+            <CustomerListClient
+              isAdmin={user.role === "ADMIN"}
+              rows={customers.map((c) => {
                 const salesTotal = c.sales.reduce(
                   (s, x) => s + Number(x.grandTotal?.toString() ?? 0),
                   0,
@@ -343,29 +323,24 @@ export default async function CRMPage({
                   (s, o) => s + Number(o.totalRevenue?.toString() ?? 0),
                   0,
                 );
-                return (
-                  <CustomerRow
-                    key={c.id}
-                    row={{
-                      id: c.id,
-                      businessName: c.businessName,
-                      contactName: c.contactName,
-                      email: c.email,
-                      customerType: c.customerType,
-                      status: c.status,
-                      lastContactDate: c.lastContactDate
-                        ? c.lastContactDate.toISOString()
-                        : null,
-                      nextFollowupDate: c.nextFollowupDate
-                        ? c.nextFollowupDate.toISOString()
-                        : null,
-                      ordersCount: c.sales.length + c.orders.length,
-                      ordersTotal: salesTotal + ordersTotal,
-                    }}
-                  />
-                );
+                return {
+                  id: c.id,
+                  businessName: c.businessName,
+                  contactName: c.contactName,
+                  email: c.email,
+                  customerType: c.customerType,
+                  status: c.status,
+                  lastContactDate: c.lastContactDate
+                    ? c.lastContactDate.toISOString()
+                    : null,
+                  nextFollowupDate: c.nextFollowupDate
+                    ? c.nextFollowupDate.toISOString()
+                    : null,
+                  ordersCount: c.sales.length + c.orders.length,
+                  ordersTotal: salesTotal + ordersTotal,
+                };
               })}
-            </ul>
+            />
             <div className="pt-4">
               <Pagination
                 page={page}
