@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 
 export const metadata = { title: "Edit Customer" };
+export const dynamic = "force-dynamic";
 
 export default async function EditCustomerPage({
   params,
@@ -16,7 +17,14 @@ export default async function EditCustomerPage({
 }) {
   await requireUser();
   const { id } = await params;
-  const c = await prisma.customer.findUnique({ where: { id } });
+  const [c, users] = await Promise.all([
+    prisma.customer.findUnique({ where: { id } }),
+    prisma.user.findMany({
+      where: { isActive: true },
+      orderBy: { fullName: "asc" },
+      select: { id: true, fullName: true, email: true },
+    }),
+  ]);
   if (!c) notFound();
 
   return (
@@ -34,16 +42,28 @@ export default async function EditCustomerPage({
       </PageHeader>
       <CustomerForm
         mode="edit"
+        reps={users.map((u) => ({ id: u.id, name: u.fullName ?? u.email }))}
         initial={{
           id: c.id,
           businessName: c.businessName,
+          dba: c.dba,
           contactName: c.contactName,
+          contactTitle: c.contactTitle,
           email: c.email,
+          mobile: c.mobile,
           phone: c.phone,
-          address: c.address,
+          street: c.street,
+          city: c.city,
+          state: c.state,
+          zipCode: c.zipCode,
+          country: c.country,
           customerType: c.customerType,
           source: c.source ?? null,
           status: c.status,
+          assignedToId: c.assignedToId,
+          paymentTerms: c.paymentTerms,
+          taxId: c.taxId,
+          shippingMethod: c.shippingMethod,
           notes: c.notes,
           tags: c.tags,
           lastContactDate: c.lastContactDate?.toISOString() ?? null,

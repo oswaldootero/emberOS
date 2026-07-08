@@ -12,16 +12,25 @@ import { audit } from "@/server/audit";
 
 const CustomerSchema = z.object({
   businessName: z.string().min(1).max(160),
+  dba: z.string().max(160).optional().nullable(),
   contactName: z.string().max(120).optional().nullable(),
+  contactTitle: z.string().max(80).optional().nullable(),
   email: z.string().email().optional().nullable().or(z.literal("")),
+  mobile: z.string().max(40).optional().nullable(),
   phone: z.string().max(40).optional().nullable(),
   address: z.string().max(500).optional().nullable(),
+  street: z.string().max(200).optional().nullable(),
+  city: z.string().max(100).optional().nullable(),
+  state: z.string().max(60).optional().nullable(),
+  zipCode: z.string().max(20).optional().nullable(),
+  country: z.string().max(60).optional().nullable(),
   customerType: z.enum([
     "RETAILER",
     "LOUNGE",
     "DISTRIBUTOR",
     "ONLINE_CUSTOMER",
     "EVENT_LEAD",
+    "OTHER",
   ]),
   source: z
     .enum(["BROKER", "WEBSITE", "EVENT", "REFERRAL", "SOCIAL_MEDIA", "DIRECT_OUTREACH"])
@@ -30,6 +39,7 @@ const CustomerSchema = z.object({
   status: z
     .enum([
       "LEAD",
+      "PROSPECT",
       "CONTACTED",
       "SAMPLE_SENT",
       "OPEN_ACCOUNT",
@@ -39,6 +49,9 @@ const CustomerSchema = z.object({
     ])
     .default("LEAD"),
   assignedToId: z.string().optional().nullable(),
+  paymentTerms: z.string().max(60).optional().nullable(),
+  taxId: z.string().max(60).optional().nullable(),
+  shippingMethod: z.string().max(80).optional().nullable(),
   tags: z.array(z.string()).optional().default([]),
   notes: z.string().max(5000).optional().nullable(),
   lastContactDate: z.string().optional().nullable(),
@@ -74,14 +87,25 @@ export async function createCustomer(input: unknown): Promise<CustomerResult> {
   const c = await prisma.customer.create({
     data: {
       businessName: d.businessName,
+      dba: d.dba || null,
       contactName: d.contactName || null,
+      contactTitle: d.contactTitle || null,
       email: d.email || null,
+      mobile: d.mobile || null,
       phone: d.phone || null,
       address: d.address || null,
+      street: d.street || null,
+      city: d.city || null,
+      state: d.state || null,
+      zipCode: d.zipCode || null,
+      country: d.country || "USA",
       customerType: d.customerType,
       source: d.source ?? null,
       status: d.status,
       assignedToId: d.assignedToId || null,
+      paymentTerms: d.paymentTerms || "Net 30",
+      taxId: d.taxId || null,
+      shippingMethod: d.shippingMethod || null,
       tags: d.tags ?? [],
       notes: d.notes || null,
       ...dates,
@@ -120,14 +144,25 @@ export async function updateCustomer(
     where: { id },
     data: {
       businessName: d.businessName,
+      dba: d.dba,
       contactName: d.contactName,
+      contactTitle: d.contactTitle,
       email: d.email || undefined,
+      mobile: d.mobile,
       phone: d.phone,
       address: d.address,
+      street: d.street,
+      city: d.city,
+      state: d.state,
+      zipCode: d.zipCode,
+      country: d.country,
       customerType: d.customerType,
       source: d.source,
       status: d.status,
       assignedToId: d.assignedToId,
+      paymentTerms: d.paymentTerms,
+      taxId: d.taxId,
+      shippingMethod: d.shippingMethod,
       tags: d.tags,
       notes: d.notes,
       ...dates,
@@ -155,6 +190,38 @@ export async function deleteCustomer(id: string): Promise<CustomerResult> {
     entityId: id,
   });
   revalidatePath("/crm");
+  return { ok: true, id };
+}
+
+export async function archiveCustomer(id: string): Promise<CustomerResult> {
+  const user = await requireUser();
+  await prisma.customer.update({
+    where: { id },
+    data: { archivedAt: new Date(), status: "INACTIVE" },
+  });
+  await audit("crm.customer_archived", {
+    actorId: user.id,
+    entityType: "Customer",
+    entityId: id,
+  });
+  revalidatePath("/crm");
+  revalidatePath(`/crm/${id}`);
+  return { ok: true, id };
+}
+
+export async function unarchiveCustomer(id: string): Promise<CustomerResult> {
+  const user = await requireUser();
+  await prisma.customer.update({
+    where: { id },
+    data: { archivedAt: null },
+  });
+  await audit("crm.customer_unarchived", {
+    actorId: user.id,
+    entityType: "Customer",
+    entityId: id,
+  });
+  revalidatePath("/crm");
+  revalidatePath(`/crm/${id}`);
   return { ok: true, id };
 }
 

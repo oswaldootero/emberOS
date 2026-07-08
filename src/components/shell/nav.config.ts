@@ -15,6 +15,7 @@ import {
   UserCog,
   Workflow,
   Briefcase,
+  Receipt,
 } from "lucide-react";
 
 export type NavItem = {
@@ -65,10 +66,16 @@ export const navigation: NavSection[] = [
     label: "Business",
     items: [
       {
-        label: "CRM & Orders",
+        label: "CRM",
         href: "/crm",
         icon: Briefcase,
-        description: "Retailers, lounges, distributors, orders",
+        description: "Retailers, lounges, distributors",
+      },
+      {
+        label: "Sales",
+        href: "/sales",
+        icon: Receipt,
+        description: "Invoices, payments, receivables",
       },
       {
         label: "Inventory",

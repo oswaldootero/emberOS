@@ -1,38 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  Edit3,
-  Mail,
-  MapPin,
-  Phone,
-  Plus,
-} from "lucide-react";
-import { PageHeader } from "@/components/shell/page-header";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CustomerStatusBadge, pretty } from "@/components/crm/status-badge";
 import { CustomerDetailClient } from "@/components/crm/customer-detail-client";
+import { CustomerTabs } from "@/components/crm/customer-tabs";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
-import { relativeTime } from "@/lib/utils";
+import { loadCustomerAnalytics } from "@/server/crm-analytics";
 
 export const metadata = { title: "Customer" };
 export const dynamic = "force-dynamic";
-
-const fmtUsd = (v: number) =>
-  Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(v);
 
 export default async function CustomerDetailPage({
   params,
@@ -42,10 +19,23 @@ export default async function CustomerDetailPage({
   await requireUser();
   const { id } = await params;
 
-  const [customer, skus] = await Promise.all([
+  const [customer, analytics, defaultScenario] = await Promise.all([
     prisma.customer.findUnique({
       where: { id },
       include: {
+        sales: {
+          orderBy: { invoiceDate: "desc" },
+          take: 50,
+          select: {
+            id: true,
+            invoiceNumber: true,
+            invoiceDate: true,
+            dueDate: true,
+            status: true,
+            grandTotal: true,
+            amountPaid: true,
+          },
+        },
         orders: {
           orderBy: { orderDate: "desc" },
           include: {
@@ -62,38 +52,36 @@ export default async function CustomerDetailPage({
         assignedTo: { select: { fullName: true, email: true } },
       },
     }),
-    prisma.inventoryItem.findMany({
-      where: { status: { not: "DISCONTINUED" } },
-      orderBy: [{ packagingType: "asc" }, { productName: "asc" }],
+    loadCustomerAnalytics(id),
+    prisma.forecastScenario.findFirst({
+      where: { isDefault: true },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
 
   if (!customer) notFound();
 
-  // Aggregate
-  const totalRevenue = customer.orders.reduce(
-    (s, o) => s + Number(o.totalRevenue?.toString() ?? 0),
-    0,
-  );
-  const totalProfit = customer.orders.reduce(
-    (s, o) => s + Number(o.netProfit?.toString() ?? 0),
-    0,
-  );
-  const totalBoxes = customer.orders.reduce(
-    (s, o) => s + o.boxQuantity,
-    0,
-  );
-  const totalCommissions = customer.orders.reduce(
-    (s, o) => s + Number(o.brokerCommission?.toString() ?? 0),
-    0,
-  );
-
-  // Heaven's Leaf defaults for new orders — pull from default scenario
-  const defaultScenario = await prisma.forecastScenario.findFirst({
-    where: { isDefault: true },
-    orderBy: { createdAt: "asc" },
+  // Activity timeline: audit events for the customer + its sales
+  const saleIds = customer.sales.map((s) => s.id);
+  const orderIds = customer.orders.map((o) => o.id);
+  const auditRows = await prisma.auditLog.findMany({
+    where: {
+      OR: [
+        { entityType: "Customer", entityId: id },
+        ...(saleIds.length
+          ? [{ entityType: "Sale", entityId: { in: saleIds } }]
+          : []),
+        ...(orderIds.length
+          ? [{ entityType: "Order", entityId: { in: orderIds } }]
+          : []),
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    include: { actor: { select: { fullName: true, email: true } } },
   });
-  const defaults = defaultScenario
+
+  const orderDefaults = defaultScenario
     ? {
         pricePerBox: Number(defaultScenario.wholesaleBoxPrice.toString()),
         costPerBox:
@@ -105,238 +93,136 @@ export default async function CustomerDetailPage({
       }
     : { pricePerBox: 65, costPerBox: 67, brokerCommissionPct: 0.15 };
 
+  const skus = await prisma.inventoryItem.findMany({
+    where: { status: { not: "DISCONTINUED" } },
+    orderBy: [{ packagingType: "asc" }, { productName: "asc" }],
+  });
+
+  const legacyOrders =
+    customer.orders.length > 0 ? (
+      <CustomerDetailClient
+        customerId={customer.id}
+        skus={skus.map((s) => ({
+          id: s.id,
+          sku: s.sku,
+          productName: s.productName,
+          packagesOnHand: s.packagesOnHand,
+          unitsPerPackage: s.unitsPerPackage,
+          wholesalePrice: Number(s.wholesalePrice.toString()),
+          costPerUnit: Number(s.costPerUnit.toString()),
+        }))}
+        cardsOnFile={customer.cardsOnFile.map((c) => ({
+          id: c.id,
+          brand: c.brand,
+          last4: c.last4,
+          expMonth: c.expMonth,
+          expYear: c.expYear,
+        }))}
+        orders={customer.orders.map((o) => {
+          const activeLink = o.paymentLinks.find(
+            (l) => l.status === "PENDING" || l.status === "CARD_CAPTURED",
+          );
+          return {
+            id: o.id,
+            orderDate: o.orderDate.toISOString(),
+            product: o.product,
+            boxQuantity: o.boxQuantity,
+            pricePerBox: Number(o.pricePerBox.toString()),
+            totalRevenue: Number(o.totalRevenue.toString()),
+            brokerCommission: Number(o.brokerCommission.toString()),
+            costOfGoods: Number(o.costOfGoods.toString()),
+            grossProfit: Number(o.grossProfit.toString()),
+            netProfit: Number(o.netProfit.toString()),
+            paymentStatus: o.paymentStatus,
+            fulfillmentStatus: o.fulfillmentStatus,
+            reorderDueDate: o.reorderDueDate?.toISOString() ?? null,
+            notes: o.notes,
+            activeLink: activeLink
+              ? {
+                  id: activeLink.id,
+                  code: activeLink.code,
+                  status: activeLink.status,
+                  capturedCard: activeLink.capturedCard
+                    ? {
+                        id: activeLink.capturedCard.id,
+                        brand: activeLink.capturedCard.brand,
+                        last4: activeLink.capturedCard.last4,
+                        expMonth: activeLink.capturedCard.expMonth,
+                        expYear: activeLink.capturedCard.expYear,
+                      }
+                    : null,
+                }
+              : null,
+          };
+        })}
+        orderDefaults={orderDefaults}
+      />
+    ) : undefined;
+
   return (
-    <div className="space-y-8">
-      <PageHeader
-        eyebrow="CRM"
-        title={customer.businessName}
-        description={customer.contactName ?? "—"}
-      >
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/crm">
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Link>
-        </Button>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/crm/${id}/edit`}>
-            <Edit3 className="h-4 w-4" /> Edit
-          </Link>
-        </Button>
-      </PageHeader>
+    <div className="space-y-4">
+      <Button variant="ghost" size="sm" asChild className="text-muted-foreground -ml-2">
+        <Link href="/crm">
+          <ArrowLeft className="h-4 w-4" /> All customers
+        </Link>
+      </Button>
 
-      <div className="grid lg:grid-cols-[2fr_1fr] gap-6">
-        <div className="space-y-6">
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatTile label="Orders" value={customer.orders.length.toString()} />
-            <StatTile label="Total boxes" value={totalBoxes.toString()} />
-            <StatTile label="Lifetime revenue" value={fmtUsd(totalRevenue)} accent="text-ember-200" />
-            <StatTile label="Broker fees" value={fmtUsd(totalCommissions)} accent="text-amber-300" />
-          </div>
-
-          {/* Orders */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Orders</CardTitle>
-              <CardDescription>
-                Lifetime profit so far:{" "}
-                <span className={totalProfit >= 0 ? "text-emerald-300" : "text-red-300"}>
-                  {fmtUsd(totalProfit)}
-                </span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CustomerDetailClient
-                customerId={customer.id}
-                skus={skus.map((s) => ({
-                  id: s.id,
-                  sku: s.sku,
-                  productName: s.productName,
-                  packagesOnHand: s.packagesOnHand,
-                  unitsPerPackage: s.unitsPerPackage,
-                  wholesalePrice: Number(s.wholesalePrice.toString()),
-                  costPerUnit: Number(s.costPerUnit.toString()),
-                }))}
-                cardsOnFile={customer.cardsOnFile.map((c) => ({
-                  id: c.id,
-                  brand: c.brand,
-                  last4: c.last4,
-                  expMonth: c.expMonth,
-                  expYear: c.expYear,
-                }))}
-                orders={customer.orders.map((o) => {
-                  const activeLink = o.paymentLinks.find(
-                    (l) => l.status === "PENDING" || l.status === "CARD_CAPTURED",
-                  );
-                  return {
-                    id: o.id,
-                    orderDate: o.orderDate.toISOString(),
-                    product: o.product,
-                    boxQuantity: o.boxQuantity,
-                    pricePerBox: Number(o.pricePerBox.toString()),
-                    totalRevenue: Number(o.totalRevenue.toString()),
-                    brokerCommission: Number(o.brokerCommission.toString()),
-                    costOfGoods: Number(o.costOfGoods.toString()),
-                    grossProfit: Number(o.grossProfit.toString()),
-                    netProfit: Number(o.netProfit.toString()),
-                    paymentStatus: o.paymentStatus,
-                    fulfillmentStatus: o.fulfillmentStatus,
-                    reorderDueDate: o.reorderDueDate?.toISOString() ?? null,
-                    notes: o.notes,
-                    activeLink: activeLink
-                      ? {
-                          id: activeLink.id,
-                          code: activeLink.code,
-                          status: activeLink.status,
-                          capturedCard: activeLink.capturedCard
-                            ? {
-                                id: activeLink.capturedCard.id,
-                                brand: activeLink.capturedCard.brand,
-                                last4: activeLink.capturedCard.last4,
-                                expMonth: activeLink.capturedCard.expMonth,
-                                expYear: activeLink.capturedCard.expYear,
-                              }
-                            : null,
-                        }
-                      : null,
-                  };
-                })}
-                orderDefaults={defaults}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Notes */}
-          {customer.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-ivory/90 whitespace-pre-wrap leading-relaxed">
-                  {customer.notes}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Classification</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Row label="Type">
-                <Badge variant="outline" className="text-[10px]">{pretty(customer.customerType)}</Badge>
-              </Row>
-              <Row label="Status"><CustomerStatusBadge status={customer.status} /></Row>
-              {customer.source && (
-                <Row label="Source">
-                  <Badge variant="outline" className="text-[10px]">{pretty(customer.source)}</Badge>
-                </Row>
-              )}
-              {customer.assignedTo && (
-                <Row label="Assigned">
-                  <span className="text-xs text-ivory">{customer.assignedTo.fullName ?? customer.assignedTo.email}</span>
-                </Row>
-              )}
-              {customer.tags.length > 0 && (
-                <Row label="Tags">
-                  <div className="flex flex-wrap gap-1 justify-end">
-                    {customer.tags.map((t) => (
-                      <Badge key={t} variant="gold" className="text-[9px]">{t}</Badge>
-                    ))}
-                  </div>
-                </Row>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Contact</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {customer.email && (
-                <div className="flex items-center gap-2 text-ivory/90">
-                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                  <a href={`mailto:${customer.email}`} className="hover:text-ember-200">
-                    {customer.email}
-                  </a>
-                </div>
-              )}
-              {customer.phone && (
-                <div className="flex items-center gap-2 text-ivory/90">
-                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                  {customer.phone}
-                </div>
-              )}
-              {customer.address && (
-                <div className="flex items-start gap-2 text-ivory/90">
-                  <MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                  <span>{customer.address}</span>
-                </div>
-              )}
-              {!customer.email && !customer.phone && !customer.address && (
-                <div className="text-xs text-muted-foreground italic">
-                  No contact info yet.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Cadence</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Last contact</span>
-                <span className="text-ivory">
-                  {customer.lastContactDate
-                    ? relativeTime(customer.lastContactDate)
-                    : "—"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Next follow-up</span>
-                <span className="text-ivory">
-                  {customer.nextFollowupDate
-                    ? new Date(customer.nextFollowupDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
-                    : "—"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <CustomerTabs
+        customer={{
+          id: customer.id,
+          businessName: customer.businessName,
+          dba: customer.dba,
+          customerType: customer.customerType,
+          status: customer.status,
+          source: customer.source,
+          contactName: customer.contactName,
+          contactTitle: customer.contactTitle,
+          email: customer.email,
+          mobile: customer.mobile,
+          phone: customer.phone,
+          street: customer.street,
+          city: customer.city,
+          state: customer.state,
+          zipCode: customer.zipCode,
+          country: customer.country,
+          address: customer.address,
+          paymentTerms: customer.paymentTerms,
+          taxId: customer.taxId,
+          shippingMethod: customer.shippingMethod,
+          salesRep:
+            customer.assignedTo?.fullName ?? customer.assignedTo?.email ?? null,
+          tags: customer.tags,
+          notes: customer.notes,
+          archivedAt: customer.archivedAt?.toISOString() ?? null,
+          createdAt: customer.createdAt.toISOString(),
+          lastContactDate: customer.lastContactDate?.toISOString() ?? null,
+        }}
+        analytics={analytics}
+        sales={customer.sales.map((s) => ({
+          id: s.id,
+          invoiceNumber: s.invoiceNumber,
+          invoiceDate: s.invoiceDate.toISOString(),
+          dueDate: s.dueDate?.toISOString() ?? null,
+          status: s.status,
+          grandTotal: Number(s.grandTotal.toString()),
+          amountPaid: Number(s.amountPaid.toString()),
+        }))}
+        timeline={auditRows.map((a) => ({
+          id: a.id,
+          action: a.action,
+          createdAt: a.createdAt.toISOString(),
+          actor: a.actor?.fullName ?? a.actor?.email ?? null,
+          detail: null,
+        }))}
+        cardsOnFile={customer.cardsOnFile.map((c) => ({
+          id: c.id,
+          brand: c.brand,
+          last4: c.last4,
+          expMonth: c.expMonth,
+          expYear: c.expYear,
+        }))}
+        legacyOrders={legacyOrders}
+      />
     </div>
   );
 }
-
-function StatTile({ label, value, accent }: { label: string; value: string; accent?: string }) {
-  return (
-    <div className="rounded-lg border border-white/[0.05] bg-ink-900/40 p-4">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`font-display text-2xl tabular-nums ${accent ?? "text-ivory"}`}>{value}</div>
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-3 text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      <div>{children}</div>
-    </div>
-  );
-}
-
-// keep Plus import alive in case future code needs it without re-adding
-void Plus;
