@@ -16,6 +16,7 @@ import {
   Workflow,
   Briefcase,
   Receipt,
+  Target,
 } from "lucide-react";
 
 export type NavChild = {
@@ -88,6 +89,11 @@ export const navigation: NavSection[] = [
             label: "Sales",
             href: "/sales",
             icon: Receipt,
+          },
+          {
+            label: "Prospecting",
+            href: "/prospects",
+            icon: Target,
           },
           {
             label: "Analytics",

@@ -111,3 +111,56 @@ npx tsx prisma/seed-crm.ts
   reuse the Supabase Storage helpers from the Asset Library.
 - **PDF export**: the invoice page is print-styled; a real PDF can be
   generated from the same data via `@react-pdf/renderer` later.
+
+## Recording external sales & QuickBooks import
+
+Not every sale is invoiced in EmberOS — many go through QuickBooks.
+
+- **Record sale** (`/sales/record`, also on each customer page): quick
+  form — customer, date, total, payment status, optional QB invoice #
+  and description. Creates a Sale with `source=EXTERNAL` (or
+  `QUICKBOOKS` when a QB number is given) and a `REC-<year>-NNNNN`
+  number. Counts in analytics and customer history like any sale.
+- **Import from QuickBooks** (`/sales/import`): upload the CSV from
+  QuickBooks Online → Sales → Invoices → Export. Headers are matched
+  loosely (Date, No., Customer, Total, Balance, Status, Due date,
+  Memo). Two-step: dry-run preview first, then confirm. Status maps
+  Paid/Open/Partially paid/Overdue/Voided → PAID/SENT/PARTIAL/OVERDUE/
+  CANCELLED, with partial amounts derived from Balance. Customers are
+  matched by exact business name (case-insensitive); optionally
+  auto-created. Re-importing the same file is safe — rows whose QB
+  number (`Sale.externalRef`) already exists are skipped.
+- Imported/recorded rows carry a QB / REC chip in the sales list.
+- Pure planning logic lives in `src/server/sales/quickbooks.ts`; the
+  server action (`src/server/actions/quickbooks-import.ts`) adds auth,
+  state, and writes.
+
+## Prospecting & sales intelligence (/prospects)
+
+Pre-customer pipeline with OpenAI-powered research. Models: `Prospect`
+(business + contacts + pipeline + AI fields) and `ProspectActivity`
+(calls/meetings/emails/SMS/notes/tasks/samples/visits).
+
+- **Pipeline**: 11 stages (Lead → … → VIP Customer / Lost); list view
+  with inline stage change + board view with per-card stage moves.
+- **CSV import** (`/prospects/import`): flexible headers, dry-run
+  preview, dedup against prospects and existing customers.
+- **AI enrichment**: fills blank fields (website, socials, address,
+  type, rating) only when the model recognizes the business — never
+  overwrites entered data, never invents URLs; confidence recorded in
+  `aiEnrichment`.
+- **AI analysis**: 0–100 compatibility score with plain-language
+  reasoning, Lounge DNA tags, Pursue/Maybe/Skip verdict, priority,
+  first-order + annual estimates, win probability, and a full briefing
+  (overview, customer profile, SWOT, approach, conversation starters,
+  products to lead with, objections, cadence, next actions). Stored in
+  `aiBriefing` JSON; batch mode scores 5 per call until done.
+- **AI search**: natural-language box ("motorcycle-friendly lounges in
+  FL that need follow-up") → gpt-4o-mini translates to list filters.
+- **Convert to customer** creates the CRM record and links both ways.
+- AI logic: `src/server/ai/prospecting.ts`; actions:
+  `src/server/actions/prospects.ts`; loaders: `src/server/prospecting.ts`.
+
+Deferred (needs external APIs/keys): map view + radius search and
+auto-discovery (Google Places), live social scraping, route planning
+(Maps Directions), Twilio/SendGrid outreach, voice-note transcription.

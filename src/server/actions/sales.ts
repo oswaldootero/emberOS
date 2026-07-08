@@ -123,6 +123,99 @@ export async function createSale(input: unknown): Promise<SaleActionResult> {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// recordSale — quick capture of a sale that was invoiced elsewhere
+// (QuickBooks etc.). One summary line item; no EmberOS invoice flow.
+// ─────────────────────────────────────────────────────────────────
+
+const RecordSaleSchema = z.object({
+  customerId: z.string().min(1),
+  saleDate: z.string().optional().nullable(),
+  total: z.number().positive(),
+  status: z.enum(["PAID", "SENT", "PARTIAL", "OVERDUE"]).default("PAID"),
+  amountPaid: z.number().nonnegative().optional(),
+  externalRef: z.string().max(60).optional().nullable(), // QuickBooks invoice #
+  description: z.string().max(200).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+export async function recordSale(input: unknown): Promise<SaleActionResult> {
+  const user = await requireUser();
+  const parsed = RecordSaleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+  const d = parsed.data;
+
+  const date = d.saleDate ? new Date(d.saleDate) : new Date();
+  const amountPaid =
+    d.status === "PAID"
+      ? d.total
+      : d.status === "PARTIAL"
+        ? Math.min(d.amountPaid ?? 0, d.total)
+        : 0;
+  const product =
+    d.description ||
+    (d.externalRef ? `QuickBooks invoice ${d.externalRef}` : "Recorded sale");
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const sale = await prisma.sale.create({
+        data: {
+          invoiceNumber: await nextInvoiceNumber("REC"),
+          customerId: d.customerId,
+          invoiceDate: date,
+          status: d.status,
+          source: d.externalRef ? "QUICKBOOKS" : "EXTERNAL",
+          externalRef: d.externalRef || null,
+          subtotal: d.total,
+          discountTotal: 0,
+          taxTotal: 0,
+          shipping: 0,
+          grandTotal: d.total,
+          amountPaid,
+          paidAt: d.status === "PAID" ? date : null,
+          notes: d.notes || null,
+          createdById: user.id,
+          items: {
+            create: [
+              {
+                product,
+                quantity: 1,
+                unitPrice: d.total,
+                discountPct: 0,
+                taxPct: 0,
+                lineTotal: d.total,
+                sortOrder: 0,
+              },
+            ],
+          },
+        },
+      });
+      await prisma.customer.update({
+        where: { id: d.customerId },
+        data: { lastContactDate: date },
+      });
+      await audit("sales.recorded", {
+        actorId: user.id,
+        entityType: "Sale",
+        entityId: sale.id,
+        diff: { total: d.total, externalRef: d.externalRef ?? null },
+      });
+      revalidateSale(d.customerId);
+      return { ok: true, id: sale.id };
+    } catch (e) {
+      const isCollision =
+        e instanceof Error && e.message.includes("Unique constraint");
+      if (!isCollision || attempt === 1) {
+        return {
+          ok: false,
+          error: e instanceof Error ? e.message : "Record failed",
+        };
+      }
+    }
+  }
+  return { ok: false, error: "Could not allocate a record number." };
+}
+
+// ─────────────────────────────────────────────────────────────────
 // updateSale — full replace of fields + line items, totals recomputed
 // ─────────────────────────────────────────────────────────────────
 
@@ -317,6 +410,43 @@ export async function duplicateSale(id: string): Promise<SaleActionResult> {
   });
   revalidateSale(src.customerId);
   return { ok: true, id: copy.id };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Bulk operations
+// ─────────────────────────────────────────────────────────────────
+
+export async function bulkVoidSales(ids: string[]): Promise<SaleActionResult> {
+  const user = await requireUser();
+  if (!ids.length) return { ok: false, error: "Nothing selected." };
+  const r = await prisma.sale.updateMany({
+    where: { id: { in: ids }, status: { not: "CANCELLED" } },
+    data: { status: "CANCELLED" },
+  });
+  await audit("sales.bulk_voided", {
+    actorId: user.id,
+    entityType: "Sale",
+    diff: { count: r.count, ids },
+  });
+  revalidatePath("/sales");
+  revalidatePath("/crm");
+  return { ok: true, id: String(r.count) };
+}
+
+/** Hard delete — admin only. Removes the invoices and their line items. */
+export async function bulkDeleteSales(ids: string[]): Promise<SaleActionResult> {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") return { ok: false, error: "Admin only." };
+  if (!ids.length) return { ok: false, error: "Nothing selected." };
+  const r = await prisma.sale.deleteMany({ where: { id: { in: ids } } });
+  await audit("sales.bulk_deleted", {
+    actorId: user.id,
+    entityType: "Sale",
+    diff: { count: r.count, ids },
+  });
+  revalidatePath("/sales");
+  revalidatePath("/crm");
+  return { ok: true, id: String(r.count) };
 }
 
 // ─────────────────────────────────────────────────────────────────

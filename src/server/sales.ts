@@ -76,9 +76,11 @@ export function computeTotals(
 // Race-safe via unique constraint + retry in the caller.
 // ─────────────────────────────────────────────────────────────────
 
-export async function nextInvoiceNumber(): Promise<string> {
+export async function nextInvoiceNumber(
+  base: "INV" | "REC" = "INV",
+): Promise<string> {
   const year = new Date().getFullYear();
-  const prefix = `INV-${year}-`;
+  const prefix = `${base}-${year}-`;
   const last = await prisma.sale.findFirst({
     where: { invoiceNumber: { startsWith: prefix } },
     orderBy: { invoiceNumber: "desc" },
@@ -158,6 +160,8 @@ export async function loadSalesList(params: SalesListParams) {
       invoiceDate: s.invoiceDate.toISOString(),
       dueDate: s.dueDate?.toISOString() ?? null,
       status: s.status,
+      source: s.source,
+      externalRef: s.externalRef,
       grandTotal: n(s.grandTotal),
       amountPaid: n(s.amountPaid),
       itemCount: s._count.items,

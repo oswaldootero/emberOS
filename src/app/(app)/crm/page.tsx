@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { pretty } from "@/components/crm/status-badge";
-import { CustomerRow } from "@/components/crm/customer-row";
+import { CustomerListClient } from "@/components/crm/customer-list-client";
 import { Pagination, SortableHeader } from "@/components/ui/data-table";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
@@ -50,7 +50,7 @@ export default async function CRMPage({
     page?: string;
   }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const sp = await searchParams;
   const q = sp.q ?? "";
   const filterType = sp.type ?? "";
@@ -129,75 +129,6 @@ export default async function CRMPage({
         <Kpi label="Leads in flight" value={snapshot.totals.leads.toString()} icon={TrendingUp} />
         <Kpi label="Broker commissions owed" value={fmtUsd(snapshot.brokerCommissionsOwed)} icon={CalendarClock} accent="text-amber-300" hint={`${fmtUsd(snapshot.brokerCommissionsThisMonth)} this month`} />
         <Kpi label="Total customers" value={snapshot.totals.customers.toString()} icon={Users} hint={`${snapshot.totals.inactive} inactive`} />
-      </div>
-
-      {/* Rollups */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Leads by source</CardTitle>
-            <CardDescription>Where new customers are coming from.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {snapshot.leadsBySource.length === 0 ? (
-              <EmptyHint label="No leads tagged with a source yet." />
-            ) : (
-              <ul className="space-y-1.5">
-                {snapshot.leadsBySource.map((row) => (
-                  <li key={row.source} className="flex items-center justify-between text-sm">
-                    <span className="text-ivory">{pretty(row.source)}</span>
-                    <Badge variant="outline" className="text-[10px]">{row.count}</Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Revenue by channel</CardTitle>
-            <CardDescription>From recorded orders.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {snapshot.revenueByChannel.length === 0 ? (
-              <EmptyHint label="No orders recorded yet." />
-            ) : (
-              <ul className="space-y-1.5">
-                {snapshot.revenueByChannel.map((row) => (
-                  <li key={row.channel} className="flex items-center justify-between text-sm">
-                    <span className="text-ivory">{pretty(row.channel)}</span>
-                    <span className="text-ember-200 tabular-nums">{fmtUsd(row.revenue)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Top customers</CardTitle>
-            <CardDescription>By total revenue.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {snapshot.topCustomers.length === 0 ? (
-              <EmptyHint label="No order data yet." />
-            ) : (
-              <ul className="space-y-1.5">
-                {snapshot.topCustomers.map((c) => (
-                  <li key={c.id} className="flex items-center gap-2 text-sm">
-                    <Link href={`/crm/${c.id}`} className="flex-1 truncate text-ivory hover:text-ember-200">
-                      {c.name}
-                    </Link>
-                    <span className="text-[10px] text-muted-foreground">{c.orderCount} orders</span>
-                    <span className="text-ember-200 tabular-nums">{fmtUsd(c.revenue)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -333,8 +264,9 @@ export default async function CRMPage({
             </div>
           ) : (
             <>
-            <ul className="divide-y divide-white/[0.04]">
-              {customers.map((c) => {
+            <CustomerListClient
+              isAdmin={user.role === "ADMIN"}
+              rows={customers.map((c) => {
                 const salesTotal = c.sales.reduce(
                   (s, x) => s + Number(x.grandTotal?.toString() ?? 0),
                   0,
@@ -343,29 +275,24 @@ export default async function CRMPage({
                   (s, o) => s + Number(o.totalRevenue?.toString() ?? 0),
                   0,
                 );
-                return (
-                  <CustomerRow
-                    key={c.id}
-                    row={{
-                      id: c.id,
-                      businessName: c.businessName,
-                      contactName: c.contactName,
-                      email: c.email,
-                      customerType: c.customerType,
-                      status: c.status,
-                      lastContactDate: c.lastContactDate
-                        ? c.lastContactDate.toISOString()
-                        : null,
-                      nextFollowupDate: c.nextFollowupDate
-                        ? c.nextFollowupDate.toISOString()
-                        : null,
-                      ordersCount: c.sales.length + c.orders.length,
-                      ordersTotal: salesTotal + ordersTotal,
-                    }}
-                  />
-                );
+                return {
+                  id: c.id,
+                  businessName: c.businessName,
+                  contactName: c.contactName,
+                  email: c.email,
+                  customerType: c.customerType,
+                  status: c.status,
+                  lastContactDate: c.lastContactDate
+                    ? c.lastContactDate.toISOString()
+                    : null,
+                  nextFollowupDate: c.nextFollowupDate
+                    ? c.nextFollowupDate.toISOString()
+                    : null,
+                  ordersCount: c.sales.length + c.orders.length,
+                  ordersTotal: salesTotal + ordersTotal,
+                };
               })}
-            </ul>
+            />
             <div className="pt-4">
               <Pagination
                 page={page}

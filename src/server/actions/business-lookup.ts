@@ -59,8 +59,10 @@ export async function lookupBusinessInfo(
     return { ok: false, error: "Type at least 3 characters of the business name." };
   }
 
-  const client = openai();
-  const completion = await client.chat.completions.create({
+  let raw: string | null | undefined;
+  try {
+    const client = openai();
+    const completion = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 0,
     response_format: { type: "json_object" },
@@ -85,9 +87,17 @@ Rules:
           : `Business: ${query}`,
       },
     ],
-  });
+    });
+    raw = completion.choices[0]?.message?.content;
+  } catch (e) {
+    // Surface the real reason (bad key, quota, network) instead of a
+    // silent server-action crash the form can't display.
+    return {
+      ok: false,
+      error: `AI lookup failed: ${e instanceof Error ? e.message : "unknown error"}`,
+    };
+  }
 
-  const raw = completion.choices[0]?.message?.content;
   if (!raw) return { ok: false, error: "No response from AI." };
 
   let parsed: z.infer<typeof ResponseSchema>;

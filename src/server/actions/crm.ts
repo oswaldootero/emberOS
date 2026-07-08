@@ -225,6 +225,45 @@ export async function unarchiveCustomer(id: string): Promise<CustomerResult> {
   return { ok: true, id };
 }
 
+export async function bulkArchiveCustomers(
+  ids: string[],
+): Promise<CustomerResult> {
+  const user = await requireUser();
+  if (!ids.length) return { ok: false, error: "Nothing selected." };
+  const r = await prisma.customer.updateMany({
+    where: { id: { in: ids } },
+    data: { archivedAt: new Date(), status: "INACTIVE" },
+  });
+  await audit("crm.customers_bulk_archived", {
+    actorId: user.id,
+    entityType: "Customer",
+    diff: { count: r.count, ids },
+  });
+  revalidatePath("/crm");
+  return { ok: true, id: String(r.count) };
+}
+
+/**
+ * Hard delete — admin only. Cascades sales, orders, payment links, and
+ * cards on file for the selected customers.
+ */
+export async function bulkDeleteCustomers(
+  ids: string[],
+): Promise<CustomerResult> {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") return { ok: false, error: "Admin only." };
+  if (!ids.length) return { ok: false, error: "Nothing selected." };
+  const r = await prisma.customer.deleteMany({ where: { id: { in: ids } } });
+  await audit("crm.customers_bulk_deleted", {
+    actorId: user.id,
+    entityType: "Customer",
+    diff: { count: r.count, ids },
+  });
+  revalidatePath("/crm");
+  revalidatePath("/sales");
+  return { ok: true, id: String(r.count) };
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Orders
 // ─────────────────────────────────────────────────────────────────

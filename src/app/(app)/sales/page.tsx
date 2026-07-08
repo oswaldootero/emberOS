@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Plus, Receipt, Wallet } from "lucide-react";
+import { FileText, PenLine, Plus, Receipt, Upload, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Card,
@@ -9,12 +9,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SaleStatusBadge } from "@/components/sales/status-badge";
-import {
-  Pagination,
-  SortableHeader,
-  buildQuery,
-} from "@/components/ui/data-table";
+import { SalesListClient } from "@/components/sales/sales-list-client";
+import { Pagination, buildQuery } from "@/components/ui/data-table";
 import { requireUser } from "@/server/auth";
 import { loadSalesList, sweepOverdue, type SalesListParams } from "@/server/sales";
 import { cn } from "@/lib/utils";
@@ -60,7 +56,7 @@ export default async function SalesPage({
     page?: string;
   }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const sp = await searchParams;
 
   // Opportunistic sweep: flip SENT/PARTIAL past due date to OVERDUE
@@ -89,6 +85,16 @@ export default async function SalesPage({
         title="Sales"
         description="Invoices, payments, and receivables — every sale tied to a customer."
       >
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/sales/import">
+            <Upload className="h-4 w-4" /> Import QuickBooks
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/sales/record">
+            <PenLine className="h-4 w-4" /> Record sale
+          </Link>
+        </Button>
         <Button variant="gold" size="sm" asChild>
           <Link href="/sales/new">
             <Plus className="h-4 w-4" /> New invoice
@@ -182,95 +188,13 @@ export default async function SalesPage({
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto -mx-2">
-                <table className="w-full text-sm min-w-[720px]">
-                  <thead>
-                    <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-white/[0.05]">
-                      <th className="text-left font-normal py-2 px-2">
-                        <SortableHeader
-                          label="Invoice"
-                          field="invoiceNumber"
-                          currentSort={params.sort!}
-                          currentDir={params.dir!}
-                          basePath="/sales"
-                          baseQuery={baseQuery}
-                        />
-                      </th>
-                      <th className="text-left font-normal py-2 px-2">Customer</th>
-                      <th className="text-left font-normal py-2 px-2">
-                        <SortableHeader
-                          label="Date"
-                          field="invoiceDate"
-                          currentSort={params.sort!}
-                          currentDir={params.dir!}
-                          basePath="/sales"
-                          baseQuery={baseQuery}
-                        />
-                      </th>
-                      <th className="text-left font-normal py-2 px-2 hidden md:table-cell">
-                        <SortableHeader
-                          label="Due"
-                          field="dueDate"
-                          currentSort={params.sort!}
-                          currentDir={params.dir!}
-                          basePath="/sales"
-                          baseQuery={baseQuery}
-                        />
-                      </th>
-                      <th className="text-left font-normal py-2 px-2">Status</th>
-                      <th className="text-right font-normal py-2 px-2">
-                        <SortableHeader
-                          label="Total"
-                          field="grandTotal"
-                          currentSort={params.sort!}
-                          currentDir={params.dir!}
-                          basePath="/sales"
-                          baseQuery={baseQuery}
-                        />
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.04]">
-                    {list.rows.map((s) => (
-                      <tr key={s.id} className="hover:bg-white/[0.02] transition">
-                        <td className="py-2.5 px-2">
-                          <Link
-                            href={`/sales/${s.id}`}
-                            className="font-mono text-xs text-ember-200 hover:underline"
-                          >
-                            {s.invoiceNumber}
-                          </Link>
-                        </td>
-                        <td className="py-2.5 px-2">
-                          <Link
-                            href={`/crm/${s.customerId}`}
-                            className="text-ivory hover:text-ember-200 truncate block max-w-[220px]"
-                          >
-                            {s.customerName}
-                          </Link>
-                        </td>
-                        <td className="py-2.5 px-2 text-xs text-muted-foreground">
-                          {fmtDate(s.invoiceDate)}
-                        </td>
-                        <td className="py-2.5 px-2 text-xs text-muted-foreground hidden md:table-cell">
-                          {fmtDate(s.dueDate)}
-                        </td>
-                        <td className="py-2.5 px-2">
-                          <SaleStatusBadge status={s.status} />
-                        </td>
-                        <td className="py-2.5 px-2 text-right tabular-nums text-ivory">
-                          {fmtUsd(s.grandTotal)}
-                          {s.status === "PARTIAL" && (
-                            <div className="text-[10px] text-amber-300">
-                              {fmtUsd(s.amountPaid)} paid
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <SalesListClient
+                rows={list.rows}
+                isAdmin={user.role === "ADMIN"}
+                sort={params.sort!}
+                dir={params.dir!}
+                baseQuery={baseQuery}
+              />
               <div className="pt-4">
                 <Pagination
                   page={list.page}

@@ -149,6 +149,12 @@ export function CustomerForm({
         return;
       }
       setSuggestion(r.suggestion);
+    } catch (e) {
+      toast.error(
+        e instanceof Error && e.message
+          ? `Lookup failed: ${e.message}`
+          : "Lookup failed — check that OpenAI is configured, then try again.",
+      );
     } finally {
       setLooking(false);
     }
