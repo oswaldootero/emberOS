@@ -131,54 +131,6 @@ export default async function CRMPage({
         <Kpi label="Total customers" value={snapshot.totals.customers.toString()} icon={Users} hint={`${snapshot.totals.inactive} inactive`} />
       </div>
 
-      {/* Rollups */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Revenue by channel</CardTitle>
-            <CardDescription>From recorded orders.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {snapshot.revenueByChannel.length === 0 ? (
-              <EmptyHint label="No orders recorded yet." />
-            ) : (
-              <ul className="space-y-1.5">
-                {snapshot.revenueByChannel.map((row) => (
-                  <li key={row.channel} className="flex items-center justify-between text-sm">
-                    <span className="text-ivory">{pretty(row.channel)}</span>
-                    <span className="text-ember-200 tabular-nums">{fmtUsd(row.revenue)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Top customers</CardTitle>
-            <CardDescription>By total revenue.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {snapshot.topCustomers.length === 0 ? (
-              <EmptyHint label="No order data yet." />
-            ) : (
-              <ul className="space-y-1.5">
-                {snapshot.topCustomers.map((c) => (
-                  <li key={c.id} className="flex items-center gap-2 text-sm">
-                    <Link href={`/crm/${c.id}`} className="flex-1 truncate text-ivory hover:text-ember-200">
-                      {c.name}
-                    </Link>
-                    <span className="text-[10px] text-muted-foreground">{c.orderCount} orders</span>
-                    <span className="text-ember-200 tabular-nums">{fmtUsd(c.revenue)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>

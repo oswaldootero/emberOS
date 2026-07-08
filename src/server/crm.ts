@@ -8,15 +8,7 @@ export type CRMSnapshot = {
     leads: number;
     inactive: number;
   };
-  leadsBySource: { source: string; count: number }[];
   byCustomerType: { type: string; count: number }[];
-  revenueByChannel: { channel: string; revenue: number }[];
-  topCustomers: {
-    id: string;
-    name: string;
-    orderCount: number;
-    revenue: number;
-  }[];
   reorderPipeline: {
     id: string;
     customerName: string;
@@ -50,13 +42,10 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
     customers,
     customersByType,
     customersByStatus,
-    leadsBySource,
-    ordersByCustomer,
     upcomingReorders,
     followups,
     totalBrokerOwedAgg,
     monthBrokerAgg,
-    revenueRows,
   ] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.groupBy({
@@ -66,18 +55,6 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
     prisma.customer.groupBy({
       by: ["status"],
       _count: { _all: true },
-    }),
-    prisma.customer.groupBy({
-      by: ["source"],
-      _count: { _all: true },
-      where: { source: { not: null } },
-    }),
-    prisma.order.groupBy({
-      by: ["customerId"],
-      _count: { _all: true },
-      _sum: { totalRevenue: true },
-      orderBy: { _sum: { totalRevenue: "desc" } },
-      take: 5,
     }),
     prisma.order.findMany({
       where: {
@@ -112,31 +89,7 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
         orderDate: { gte: startOfMonth },
       },
     }),
-    prisma.order.findMany({
-      select: {
-        totalRevenue: true,
-        customer: { select: { customerType: true } },
-      },
-    }),
   ]);
-
-  // Top customers: hydrate names
-  const topIds = ordersByCustomer.map((o) => o.customerId);
-  const topCustomerNames =
-    topIds.length > 0
-      ? await prisma.customer.findMany({
-          where: { id: { in: topIds } },
-          select: { id: true, businessName: true },
-        })
-      : [];
-  const nameById = new Map(topCustomerNames.map((c) => [c.id, c.businessName]));
-
-  // Revenue by channel — derived from customers' types via their orders
-  const channelMap = new Map<string, number>();
-  for (const r of revenueRows) {
-    const k = r.customer?.customerType ?? "UNKNOWN";
-    channelMap.set(k, (channelMap.get(k) ?? 0) + num(r.totalRevenue));
-  }
 
   return {
     totals: {
@@ -154,28 +107,13 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
           0) +
         (customersByStatus.find((s) => s.status === "LOST")?._count._all ?? 0),
     },
-    leadsBySource: leadsBySource.map((r) => ({
-      source: r.source ?? "UNKNOWN",
-      count: r._count._all,
-    })),
     byCustomerType: customersByType.map((r) => ({
       type: r.customerType,
       count: r._count._all,
     })),
-    revenueByChannel: Array.from(channelMap.entries())
-      .map(([channel, revenue]) => ({ channel, revenue }))
-      .sort((a, b) => b.revenue - a.revenue),
-    topCustomers: ordersByCustomer.map((o) => ({
-      id: o.customerId,
-      name: nameById.get(o.customerId) ?? "(unknown)",
-      orderCount: o._count._all,
-      revenue: num(o._sum.totalRevenue),
-    })),
     reorderPipeline: upcomingReorders.map((o) => {
       const due = o.reorderDueDate ?? new Date();
-      const days = Math.ceil(
-        (due.getTime() - now.getTime()) / 86400000,
-      );
+      const days = Math.ceil((due.getTime() - now.getTime()) / 86400000);
       return {
         id: o.id,
         customerName: o.customer?.businessName ?? "—",
