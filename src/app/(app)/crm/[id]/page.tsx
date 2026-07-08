@@ -19,7 +19,7 @@ export default async function CustomerDetailPage({
   await requireUser();
   const { id } = await params;
 
-  const [customer, analytics, defaultScenario] = await Promise.all([
+  const [customer, analytics, defaultScenario, skus] = await Promise.all([
     prisma.customer.findUnique({
       where: { id },
       include: {
@@ -57,6 +57,10 @@ export default async function CustomerDetailPage({
       where: { isDefault: true },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.inventoryItem.findMany({
+      where: { status: { not: "DISCONTINUED" } },
+      orderBy: [{ packagingType: "asc" }, { productName: "asc" }],
+    }),
   ]);
 
   if (!customer) notFound();
@@ -92,11 +96,6 @@ export default async function CustomerDetailPage({
         ),
       }
     : { pricePerBox: 65, costPerBox: 67, brokerCommissionPct: 0.15 };
-
-  const skus = await prisma.inventoryItem.findMany({
-    where: { status: { not: "DISCONTINUED" } },
-    orderBy: [{ packagingType: "asc" }, { productName: "asc" }],
-  });
 
   const legacyOrders =
     customer.orders.length > 0 ? (

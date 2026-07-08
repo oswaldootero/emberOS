@@ -56,6 +56,7 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
     followups,
     totalBrokerOwedAgg,
     monthBrokerAgg,
+    revenueRows,
   ] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.groupBy({
@@ -111,6 +112,12 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
         orderDate: { gte: startOfMonth },
       },
     }),
+    prisma.order.findMany({
+      select: {
+        totalRevenue: true,
+        customer: { select: { customerType: true } },
+      },
+    }),
   ]);
 
   // Top customers: hydrate names
@@ -125,13 +132,6 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
   const nameById = new Map(topCustomerNames.map((c) => [c.id, c.businessName]));
 
   // Revenue by channel — derived from customers' types via their orders
-  // For this we need a join-ish; cheap path: query orders + customer types.
-  const revenueRows = await prisma.order.findMany({
-    select: {
-      totalRevenue: true,
-      customer: { select: { customerType: true } },
-    },
-  });
   const channelMap = new Map<string, number>();
   for (const r of revenueRows) {
     const k = r.customer?.customerType ?? "UNKNOWN";
