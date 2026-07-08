@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { pretty } from "@/components/crm/status-badge";
 import { CustomerRow } from "@/components/crm/customer-row";
+import { Pagination, SortableHeader } from "@/components/ui/data-table";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { loadCRMSnapshot } from "@/server/crm";
@@ -34,6 +35,8 @@ const fmtUsd = (v: number) =>
     maximumFractionDigits: 0,
   }).format(v);
 
+const PAGE_SIZE = 25;
+
 export default async function CRMPage({
   searchParams,
 }: {
@@ -41,6 +44,10 @@ export default async function CRMPage({
     q?: string;
     type?: string;
     status?: string;
+    archived?: string;
+    sort?: string;
+    dir?: string;
+    page?: string;
   }>;
 }) {
   await requireUser();
@@ -48,34 +55,54 @@ export default async function CRMPage({
   const q = sp.q ?? "";
   const filterType = sp.type ?? "";
   const filterStatus = sp.status ?? "";
+  const showArchived = sp.archived === "1";
+  const page = Math.max(1, Number(sp.page) || 1);
+  const sortField = ["businessName", "createdAt", "updatedAt", "lastContactDate"].includes(sp.sort ?? "")
+    ? (sp.sort as "businessName" | "createdAt" | "updatedAt" | "lastContactDate")
+    : "updatedAt";
+  const sortDir = sp.dir === "asc" ? "asc" : "desc";
 
-  const [customers, snapshot] = await Promise.all([
+  const where = {
+    archivedAt: showArchived ? { not: null } : null,
+    ...(q && {
+      OR: [
+        { businessName: { contains: q, mode: "insensitive" as const } },
+        { dba: { contains: q, mode: "insensitive" as const } },
+        { contactName: { contains: q, mode: "insensitive" as const } },
+        { email: { contains: q, mode: "insensitive" as const } },
+        { phone: { contains: q, mode: "insensitive" as const } },
+        { mobile: { contains: q, mode: "insensitive" as const } },
+        { tags: { has: q } },
+      ],
+    }),
+    ...(filterType && {
+      customerType: filterType as "RETAILER" | "LOUNGE" | "DISTRIBUTOR" | "ONLINE_CUSTOMER" | "EVENT_LEAD" | "OTHER",
+    }),
+    ...(filterStatus && {
+      status: filterStatus as "LEAD" | "PROSPECT" | "CONTACTED" | "SAMPLE_SENT" | "OPEN_ACCOUNT" | "ACTIVE_CUSTOMER" | "INACTIVE" | "LOST",
+    }),
+  };
+
+  const [customers, customerCount, snapshot] = await Promise.all([
     prisma.customer.findMany({
-      where: {
-        ...(q && {
-          OR: [
-            { businessName: { contains: q, mode: "insensitive" } },
-            { contactName: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
-          ],
-        }),
-        ...(filterType && {
-          customerType: filterType as "RETAILER" | "LOUNGE" | "DISTRIBUTOR" | "ONLINE_CUSTOMER" | "EVENT_LEAD",
-        }),
-        ...(filterStatus && {
-          status: filterStatus as "LEAD" | "CONTACTED" | "SAMPLE_SENT" | "OPEN_ACCOUNT" | "ACTIVE_CUSTOMER" | "INACTIVE" | "LOST",
-        }),
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 100,
+      where,
+      orderBy: { [sortField]: sortDir },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: {
+        sales: {
+          where: { status: { in: ["SENT", "PAID", "PARTIAL", "OVERDUE"] } },
+          select: { grandTotal: true },
+        },
         orders: {
           select: { totalRevenue: true },
         },
       },
     }),
+    prisma.customer.count({ where }),
     loadCRMSnapshot(),
   ]);
+  const pageCount = Math.max(1, Math.ceil(customerCount / PAGE_SIZE));
 
   return (
     <div className="space-y-8">
@@ -84,6 +111,11 @@ export default async function CRMPage({
         title="Who we work with."
         description="Retailers, lounges, distributors, online customers, and event leads — all in one ledger."
       >
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/crm/analytics">
+            <TrendingUp className="h-4 w-4" /> Analytics
+          </Link>
+        </Button>
         <Button variant="gold" size="sm" asChild>
           <Link href="/crm/new">
             <Plus className="h-4 w-4" /> Add Customer
@@ -229,16 +261,30 @@ export default async function CRMPage({
         <CardHeader>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <CardTitle>All customers</CardTitle>
-              <CardDescription>{customers.length} showing</CardDescription>
+              <CardTitle>{showArchived ? "Archived customers" : "All customers"}</CardTitle>
+              <CardDescription>
+                {customerCount} total · sorted by{" "}
+                <SortableHeader
+                  label={
+                    { businessName: "name", createdAt: "created", updatedAt: "recent activity", lastContactDate: "last contact" }[sortField]
+                  }
+                  field={sortField === "updatedAt" ? "businessName" : "updatedAt"}
+                  currentSort={sortField}
+                  currentDir={sortDir}
+                  basePath="/crm"
+                  baseQuery={{ q, type: filterType, status: filterStatus, archived: sp.archived }}
+                  className="text-ember-200"
+                />
+              </CardDescription>
             </div>
             <form className="flex items-center gap-2 flex-wrap">
+              {showArchived && <input type="hidden" name="archived" value="1" />}
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   name="q"
                   defaultValue={q}
-                  placeholder="Search…"
+                  placeholder="Search name, contact, phone, tag…"
                   className="pl-8 w-56 h-9"
                 />
               </div>
@@ -253,6 +299,7 @@ export default async function CRMPage({
                 <option value="DISTRIBUTOR">Distributor</option>
                 <option value="ONLINE_CUSTOMER">Online customer</option>
                 <option value="EVENT_LEAD">Event lead</option>
+                <option value="OTHER">Other</option>
               </select>
               <select
                 name="status"
@@ -261,6 +308,7 @@ export default async function CRMPage({
               >
                 <option value="">All statuses</option>
                 <option value="LEAD">Lead</option>
+                <option value="PROSPECT">Prospect</option>
                 <option value="CONTACTED">Contacted</option>
                 <option value="SAMPLE_SENT">Sample sent</option>
                 <option value="OPEN_ACCOUNT">Open account</option>
@@ -269,6 +317,12 @@ export default async function CRMPage({
                 <option value="LOST">Lost</option>
               </select>
               <Button variant="outline" size="sm" type="submit">Apply</Button>
+              <Link
+                href={showArchived ? "/crm" : "/crm?archived=1"}
+                className="text-[11px] text-muted-foreground hover:text-ivory underline-offset-2 hover:underline"
+              >
+                {showArchived ? "Show active" : "Show archived"}
+              </Link>
             </form>
           </div>
         </CardHeader>
@@ -281,7 +335,11 @@ export default async function CRMPage({
             <>
             <ul className="divide-y divide-white/[0.04]">
               {customers.map((c) => {
-                const total = c.orders.reduce(
+                const salesTotal = c.sales.reduce(
+                  (s, x) => s + Number(x.grandTotal?.toString() ?? 0),
+                  0,
+                );
+                const ordersTotal = c.orders.reduce(
                   (s, o) => s + Number(o.totalRevenue?.toString() ?? 0),
                   0,
                 );
@@ -301,13 +359,23 @@ export default async function CRMPage({
                       nextFollowupDate: c.nextFollowupDate
                         ? c.nextFollowupDate.toISOString()
                         : null,
-                      ordersCount: c.orders.length,
-                      ordersTotal: total,
+                      ordersCount: c.sales.length + c.orders.length,
+                      ordersTotal: salesTotal + ordersTotal,
                     }}
                   />
                 );
               })}
             </ul>
+            <div className="pt-4">
+              <Pagination
+                page={page}
+                pageCount={pageCount}
+                total={customerCount}
+                basePath="/crm"
+                baseQuery={{ q, type: filterType, status: filterStatus, archived: sp.archived, sort: sp.sort, dir: sp.dir }}
+                noun="customers"
+              />
+            </div>
             <p className="text-[10px] text-muted-foreground mt-3 italic">
               Tip: click any status badge or follow-up date to edit inline.
             </p>

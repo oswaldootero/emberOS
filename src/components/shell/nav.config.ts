@@ -15,7 +15,14 @@ import {
   UserCog,
   Workflow,
   Briefcase,
+  Receipt,
 } from "lucide-react";
+
+export type NavChild = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
 
 export type NavItem = {
   label: string;
@@ -24,6 +31,8 @@ export type NavItem = {
   badge?: string;
   description?: string;
   adminOnly?: boolean;
+  /** Sub-items rendered nested under this item (always expanded) */
+  children?: NavChild[];
 };
 
 export type NavSection = {
@@ -65,10 +74,27 @@ export const navigation: NavSection[] = [
     label: "Business",
     items: [
       {
-        label: "CRM & Orders",
+        label: "CRM",
         href: "/crm",
         icon: Briefcase,
-        description: "Retailers, lounges, distributors, orders",
+        description: "Customers, sales, analytics",
+        children: [
+          {
+            label: "Customers",
+            href: "/crm",
+            icon: Users,
+          },
+          {
+            label: "Sales",
+            href: "/sales",
+            icon: Receipt,
+          },
+          {
+            label: "Analytics",
+            href: "/crm/analytics",
+            icon: LineChart,
+          },
+        ],
       },
       {
         label: "Inventory",

@@ -113,6 +113,7 @@ enum CustomerType {
   DISTRIBUTOR
   ONLINE_CUSTOMER
   EVENT_LEAD
+  OTHER
 }
 
 enum LeadSource {
@@ -126,12 +127,22 @@ enum LeadSource {
 
 enum CustomerStatus {
   LEAD
+  PROSPECT
   CONTACTED
   SAMPLE_SENT
   OPEN_ACCOUNT
   ACTIVE_CUSTOMER
   INACTIVE
   LOST
+}
+
+enum SaleStatus {
+  DRAFT
+  SENT
+  PAID
+  PARTIAL
+  OVERDUE
+  CANCELLED
 }
 
 enum OrderPaymentStatus {
@@ -236,6 +247,7 @@ model User {
   createdOrders       Order[]           @relation("OrderCreator")
   inventoryAdjustments InventoryAdjustment[]
   paymentLinks        PaymentLink[]     @relation("PaymentLinkCreator")
+  sales               Sale[]            @relation("SaleCreator")
 
   @@index([role])
   @@index([supabaseId])
@@ -833,23 +845,41 @@ model ForecastScenario {
 model Customer {
   id                String          @id @default(cuid())
   businessName      String
-  contactName       String?
-  email             String?
-  phone             String?
-  address           String?
+  dba               String?         // "doing business as" (optional)
   customerType      CustomerType
   source            LeadSource?
   status            CustomerStatus  @default(LEAD)
 
+  // Primary contact
+  contactName       String?
+  contactTitle      String?
+  email             String?
+  mobile            String?
+  phone             String?         // office phone
+
+  // Business address (structured); `address` kept as legacy free-form
+  address           String?
+  street            String?
+  city              String?
+  state             String?
+  zipCode           String?
+  country           String?         @default("USA")
+
+  // Sales information
   assignedTo        User?           @relation("AssignedCustomers", fields: [assignedToId], references: [id])
-  assignedToId      String?
+  assignedToId      String?         // sales representative
+  paymentTerms      String?         @default("Net 30")
+  taxId             String?
+  shippingMethod    String?
 
   tags              String[]        @default([])
   notes             String?         @db.Text
   lastContactDate   DateTime?
   nextFollowupDate  DateTime?
+  archivedAt        DateTime?       // soft-delete / archive
 
   orders            Order[]
+  sales             Sale[]
   paymentLinks      PaymentLink[]
   cardsOnFile       CardOnFile[]
 
@@ -860,6 +890,9 @@ model Customer {
   @@index([status])
   @@index([assignedToId])
   @@index([nextFollowupDate])
+  @@index([archivedAt])
+  @@index([businessName])
+  @@index([email])
 }
 
 model Order {
@@ -939,6 +972,7 @@ model InventoryItem {
 
   adjustments             InventoryAdjustment[]
   orders                  Order[]
+  saleItems               SaleItem[]
 
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
@@ -1018,6 +1052,72 @@ model PaymentLink {
   @@index([customerId])
   @@index([orderId])
   @@index([status])
+}
+
+// -----------------------------
+// Sales — invoices with line items
+// -----------------------------
+// The invoicing system for wholesale. A Sale is an invoice tied to a
+// Customer with N line items. Line items optionally reference an
+// InventoryItem so inventory/purchasing/accounting can integrate later
+// without a schema change. All money is Decimal; totals are computed
+// server-side and persisted for cheap reporting at scale.
+
+model Sale {
+  id             String      @id @default(cuid())
+  invoiceNumber  String      @unique             // e.g. INV-2026-00042
+  customer       Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId     String
+
+  invoiceDate    DateTime    @default(now())
+  dueDate        DateTime?
+  status         SaleStatus  @default(DRAFT)
+
+  // Persisted totals (recomputed on every item write)
+  subtotal       Decimal     @db.Decimal(12, 2) @default(0)
+  discountTotal  Decimal     @db.Decimal(12, 2) @default(0)   // order-level + line discounts
+  taxTotal       Decimal     @db.Decimal(12, 2) @default(0)
+  shipping       Decimal     @db.Decimal(12, 2) @default(0)
+  grandTotal     Decimal     @db.Decimal(12, 2) @default(0)
+  amountPaid     Decimal     @db.Decimal(12, 2) @default(0)
+  paidAt         DateTime?
+
+  notes          String?     @db.Text            // shown on the invoice
+  internalNotes  String?     @db.Text            // team-only
+
+  items          SaleItem[]
+
+  createdBy      User?       @relation("SaleCreator", fields: [createdById], references: [id])
+  createdById    String?
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([customerId, invoiceDate])
+  @@index([status])
+  @@index([invoiceDate])
+  @@index([dueDate])
+}
+
+model SaleItem {
+  id              String         @id @default(cuid())
+  sale            Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId          String
+
+  // Optional inventory link — enables auto-deduct + product reporting later
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  inventoryItemId String?
+
+  product         String                          // denormalized product name
+  quantity        Int
+  unitPrice       Decimal        @db.Decimal(10, 2)
+  discountPct     Decimal        @db.Decimal(5, 2) @default(0)  // 0–100
+  taxPct          Decimal        @db.Decimal(5, 2) @default(0)  // 0–100
+  lineTotal       Decimal        @db.Decimal(12, 2)             // qty*price*(1-disc)*(1+tax)
+  sortOrder       Int            @default(0)
+
+  @@index([saleId])
+  @@index([inventoryItemId])
 }
 
 model CardOnFile {

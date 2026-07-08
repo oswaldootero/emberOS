@@ -2,17 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Command, LogOut, Search, Sparkles } from "lucide-react";
+import { Bell, LogOut, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { GlobalSearch } from "@/components/shell/global-search";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type UserShape = { email?: string | null; fullName?: string | null } | null;
 
 export function Topbar({ user }: { user?: UserShape }) {
-  const [q, setQ] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
 
@@ -35,18 +34,7 @@ export function Topbar({ user }: { user?: UserShape }) {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-white/[0.05] bg-ink-950/70 px-4 lg:px-6 backdrop-blur-xl">
-      <div className="relative flex-1 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search content, members, keywords…"
-          className="pl-9 pr-16 bg-ink-900/60"
-        />
-        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden md:inline-flex h-5 select-none items-center gap-1 rounded border border-white/10 bg-ink-700 px-1.5 font-mono text-[10px] text-muted-foreground">
-          <Command className="h-3 w-3" />K
-        </kbd>
-      </div>
+      <GlobalSearch />
 
       <div className="ml-auto flex items-center gap-2">
         <Button variant="ghost" size="sm" className="gap-2" asChild>
