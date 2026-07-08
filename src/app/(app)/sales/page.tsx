@@ -85,7 +85,7 @@ export default async function SalesPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Business"
+        eyebrow="CRM"
         title="Sales"
         description="Invoices, payments, and receivables — every sale tied to a customer."
       >

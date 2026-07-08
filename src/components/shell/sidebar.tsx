@@ -40,10 +40,84 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
             </div>
             <ul className="space-y-0.5">
               {visible.map((item) => {
+                const Icon = item.icon;
+
+                // Parent with children: render a group header + nested items
+                if (item.children?.length) {
+                  // Longest-match wins so /crm/analytics lights up
+                  // "Analytics", not "Customers" (/crm)
+                  const best = item.children.reduce<{ href: string } | null>(
+                    (acc, c) => {
+                      const matches =
+                        pathname === c.href || pathname.startsWith(`${c.href}/`);
+                      if (!matches) return acc;
+                      if (!acc || c.href.length > acc.href.length) return c;
+                      return acc;
+                    },
+                    null,
+                  );
+                  const groupActive = Boolean(best);
+                  return (
+                    <li key={item.href}>
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm",
+                          groupActive ? "text-ivory" : "text-muted-foreground",
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            "h-4 w-4",
+                            groupActive ? "text-ember-300" : "",
+                          )}
+                        />
+                        <span className="font-medium">{item.label}</span>
+                      </div>
+                      <ul className="ml-[1.35rem] border-l border-white/[0.06] pl-2 space-y-0.5">
+                        {item.children.map((child) => {
+                          const childActive = best?.href === child.href;
+                          const ChildIcon = child.icon;
+                          return (
+                            <li key={child.href}>
+                              <Link
+                                href={child.href}
+                                className={cn(
+                                  "group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] transition-colors",
+                                  childActive
+                                    ? "text-ivory"
+                                    : "text-muted-foreground hover:text-ivory hover:bg-white/[0.03]",
+                                )}
+                              >
+                                {childActive && (
+                                  <motion.div
+                                    layoutId="active-pill"
+                                    className="absolute inset-0 rounded-md bg-gradient-to-r from-ember-500/15 to-transparent border border-ember-500/20"
+                                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                  />
+                                )}
+                                <ChildIcon
+                                  className={cn(
+                                    "relative h-3.5 w-3.5 transition-colors",
+                                    childActive
+                                      ? "text-ember-300"
+                                      : "group-hover:text-ember-300/70",
+                                  )}
+                                />
+                                <span className="relative font-medium">
+                                  {child.label}
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </li>
+                  );
+                }
+
                 const active =
                   pathname === item.href ||
                   (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                const Icon = item.icon;
                 return (
                   <li key={item.href}>
                     <Link

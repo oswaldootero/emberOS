@@ -18,6 +18,12 @@ import {
   Receipt,
 } from "lucide-react";
 
+export type NavChild = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
+
 export type NavItem = {
   label: string;
   href: string;
@@ -25,6 +31,8 @@ export type NavItem = {
   badge?: string;
   description?: string;
   adminOnly?: boolean;
+  /** Sub-items rendered nested under this item (always expanded) */
+  children?: NavChild[];
 };
 
 export type NavSection = {
@@ -69,13 +77,24 @@ export const navigation: NavSection[] = [
         label: "CRM",
         href: "/crm",
         icon: Briefcase,
-        description: "Retailers, lounges, distributors",
-      },
-      {
-        label: "Sales",
-        href: "/sales",
-        icon: Receipt,
-        description: "Invoices, payments, receivables",
+        description: "Customers, sales, analytics",
+        children: [
+          {
+            label: "Customers",
+            href: "/crm",
+            icon: Users,
+          },
+          {
+            label: "Sales",
+            href: "/sales",
+            icon: Receipt,
+          },
+          {
+            label: "Analytics",
+            href: "/crm/analytics",
+            icon: LineChart,
+          },
+        ],
       },
       {
         label: "Inventory",
