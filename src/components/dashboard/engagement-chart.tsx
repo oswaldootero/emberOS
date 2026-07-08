@@ -26,29 +26,29 @@ export function EngagementChart({ data }: { data: Point[] }) {
             <stop offset="100%" stopColor="#7f5f3b" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
         <XAxis
           dataKey="date"
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
         />
         <Tooltip
           contentStyle={{
-            background: "rgba(15,14,20,0.95)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "hsl(var(--popover) / 0.97)",
+            border: "1px solid hsl(var(--contrast) / 0.12)",
             borderRadius: 8,
             fontSize: 12,
-            color: "#f4ecd8",
+            color: "hsl(var(--popover-foreground))",
           }}
-          labelStyle={{ color: "rgba(255,255,255,0.5)" }}
+          labelStyle={{ color: "hsl(var(--muted-foreground))" }}
         />
         <Area
           type="monotone"

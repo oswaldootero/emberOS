@@ -3,10 +3,96 @@
 @tailwind utilities;
 
 @layer base {
+  /* ───────────────────────────────────────────────────────────────
+     EmberOS theming.
+
+     The whole palette (ink surfaces, ivory text, ember golds, and
+     the low-alpha "white" borders) is driven by CSS variables so the
+     same utility classes render correctly in both themes:
+
+       :root  = Warm Paper (light — DEFAULT)
+       .dark  = Dark Luxury (the original cinematic look)
+
+     Semantics are fixed, values flip: `ink-*` is always "surface",
+     `ivory` is always "body text", `contrast` is always "opposite of
+     the surface" (used by border-white/[…] via the Tailwind remap).
+     ─────────────────────────────────────────────────────────────── */
+
   :root {
-    /* EmberOS — Dark Luxury (default, always dark) */
-    --background: 240 16% 4%;       /* near matte black */
-    --foreground: 38 50% 92%;       /* warm ivory */
+    /* shadcn tokens — Warm Paper */
+    --background: 40 30% 97%;
+    --foreground: 30 15% 14%;
+
+    --card: 40 33% 99%;
+    --card-foreground: 30 15% 14%;
+
+    --popover: 40 33% 99%;
+    --popover-foreground: 30 15% 14%;
+
+    --primary: 39 65% 38%;          /* deep gold, readable on paper */
+    --primary-foreground: 40 30% 98%;
+
+    --secondary: 40 20% 92%;
+    --secondary-foreground: 30 15% 20%;
+
+    --muted: 40 18% 92%;
+    --muted-foreground: 30 10% 42%;
+
+    --accent: 38 35% 88%;           /* pale tobacco */
+    --accent-foreground: 30 20% 18%;
+
+    --destructive: 0 65% 45%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 35 15% 86%;
+    --input: 35 15% 86%;
+    --ring: 39 65% 38%;
+
+    --radius: 0.625rem;
+
+    /* ink surface scale — light values (page → elevated) */
+    --ink-950: 40 25% 96%;
+    --ink-900: 40 30% 98%;
+    --ink-850: 40 33% 99%;
+    --ink-800: 40 20% 93%;
+    --ink-700: 40 15% 89%;
+    --ink-600: 38 12% 84%;
+
+    /* ivory text scale — dark values on light paper */
+    --ivory: 30 15% 14%;
+    --ivory-50: 30 20% 8%;
+    --ivory-100: 30 15% 14%;
+    --ivory-200: 32 14% 26%;
+    --ivory-300: 33 12% 38%;
+
+    /* ember gold scale — darkened for contrast on paper */
+    --ember-50: 40 60% 30%;
+    --ember-100: 40 62% 33%;
+    --ember-200: 39 62% 35%;
+    --ember-300: 39 60% 40%;
+    --ember-400: 39 57% 44%;
+    --ember-500: 39 69% 36%;
+    --ember-600: 39 75% 27%;
+    --ember-700: 39 84% 19%;
+
+    /* "white" remap target: opposite of the surface */
+    --contrast: 30 20% 10%;
+
+    /* shadows: soft neutral on light */
+    --shadow-cinematic:
+      0 20px 50px -24px rgba(60, 45, 20, 0.18),
+      0 6px 18px -8px rgba(60, 45, 20, 0.12),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
+    --shadow-glow: 0 0 40px -10px rgba(164, 118, 30, 0.25);
+    --shadow-glow-sm: 0 0 20px -8px rgba(164, 118, 30, 0.18);
+
+    color-scheme: light;
+  }
+
+  .dark {
+    /* shadcn tokens — Dark Luxury (original) */
+    --background: 240 16% 4%;
+    --foreground: 38 50% 92%;
 
     --card: 240 14% 6%;
     --card-foreground: 38 50% 92%;
@@ -14,7 +100,7 @@
     --popover: 240 14% 6%;
     --popover-foreground: 38 50% 92%;
 
-    --primary: 38 60% 50%;          /* muted gold */
+    --primary: 38 60% 50%;
     --primary-foreground: 240 16% 6%;
 
     --secondary: 240 8% 14%;
@@ -23,7 +109,7 @@
     --muted: 240 8% 12%;
     --muted-foreground: 38 14% 64%;
 
-    --accent: 28 35% 22%;           /* dark tobacco brown */
+    --accent: 28 35% 22%;
     --accent-foreground: 38 50% 90%;
 
     --destructive: 0 60% 50%;
@@ -33,23 +119,59 @@
     --input: 240 8% 14%;
     --ring: 38 60% 50%;
 
-    --radius: 0.625rem;
+    /* ink surface scale — original dark hexes as HSL */
+    --ink-950: 255 25% 3%;
+    --ink-900: 252 20% 5%;
+    --ink-850: 250 18% 7%;
+    --ink-800: 248 18% 9%;
+    --ink-700: 247 15% 12%;
+    --ink-600: 250 16% 15%;
+
+    /* ivory text scale — original values */
+    --ivory: 43 56% 90%;
+    --ivory-50: 42 62% 96%;
+    --ivory-100: 43 56% 90%;
+    --ivory-200: 43 49% 81%;
+    --ivory-300: 42 41% 68%;
+
+    /* ember gold scale — original values */
+    --ember-50: 40 100% 94%;
+    --ember-100: 41 100% 83%;
+    --ember-200: 39 86% 72%;
+    --ember-300: 39 72% 60%;
+    --ember-400: 39 57% 50%;
+    --ember-500: 39 69% 38%;
+    --ember-600: 39 75% 28%;
+    --ember-700: 39 84% 19%;
+
+    --contrast: 0 0% 100%;
+
+    --shadow-cinematic:
+      0 20px 60px -20px rgba(0, 0, 0, 0.8),
+      0 8px 24px -8px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    --shadow-glow: 0 0 40px -10px rgba(198, 148, 55, 0.35);
+    --shadow-glow-sm: 0 0 20px -8px rgba(198, 148, 55, 0.25);
+
+    color-scheme: dark;
   }
 
   * {
     @apply border-border;
   }
 
-  html {
-    color-scheme: dark;
-  }
-
   body {
     @apply bg-ink-950 text-ivory antialiased;
     background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(164, 118, 30, 0.06), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(122, 77, 38, 0.04), transparent);
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+
+  .dark body {
+    background-image:
       radial-gradient(ellipse 80% 50% at 50% -10%, rgba(198, 148, 55, 0.08), transparent),
       radial-gradient(ellipse 60% 40% at 80% 110%, rgba(122, 77, 38, 0.06), transparent);
-    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
   }
 
   ::selection {
@@ -57,16 +179,21 @@
     color: hsl(var(--foreground));
   }
 
-  /* Subtle film grain on body */
+  /* Subtle film grain — barely-there on light, original on dark */
   body::before {
     content: "";
     position: fixed;
     inset: 0;
     pointer-events: none;
     z-index: 1;
+    opacity: 0.012;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/></svg>");
+  }
+
+  .dark body::before {
     opacity: 0.025;
     mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/></svg>");
   }
 }
 
@@ -95,7 +222,7 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(198, 148, 55, 0.35) 50%,
+      hsl(var(--ember-400) / 0.35) 50%,
       transparent 100%
     );
     height: 1px;
@@ -105,7 +232,7 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.06) 50%,
+      hsl(var(--contrast) / 0.06) 50%,
       transparent 100%
     );
     background-size: 200% 100%;
@@ -122,12 +249,12 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.06);
+  background: hsl(var(--contrast) / 0.1);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(198, 148, 55, 0.25);
+  background: hsl(var(--ember-400) / 0.35);
   background-clip: content-box;
 }

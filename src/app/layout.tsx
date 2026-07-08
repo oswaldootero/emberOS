@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Cormorant_Garamond, JetBrains_Mono } from "next/font/google";
-import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme/theme-provider";
+import { ThemedToaster } from "@/components/theme/themed-toaster";
 import "./globals.css";
 
 const sans = Inter({
@@ -37,30 +38,22 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#07060a",
-  colorScheme: "dark",
+  themeColor: "#faf7f0",
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${sans.variable} ${display.variable} ${mono.variable} dark`}
+      className={`${sans.variable} ${display.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen font-sans">
-        {children}
-        <Toaster
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            classNames: {
-              toast:
-                "!bg-ink-850 !border-white/10 !text-ivory !shadow-cinematic",
-              description: "!text-muted-foreground",
-            },
-          }}
-        />
+        <ThemeProvider>
+          {children}
+          <ThemedToaster />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Flame } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export const metadata = { title: "Sign in" };
 
@@ -9,6 +10,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-6 py-10 relative overflow-hidden">
       <div className="absolute inset-0 bg-ember-glow opacity-50 pointer-events-none" />
       <div className="absolute inset-0 bg-tobacco-grain pointer-events-none" />
+      <ThemeToggle className="absolute top-4 right-4 z-10" />
 
       <div className="relative w-full max-w-md space-y-8">
         <div className="text-center space-y-3">

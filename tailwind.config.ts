@@ -11,14 +11,16 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // EmberOS cinematic palette
+        // EmberOS palette — every scale resolves through CSS variables so
+        // the same utility classes work in light (:root) and dark (.dark).
+        // See globals.css for both value sets.
         ink: {
-          950: "#07060a",
-          900: "#0b0a0f",
-          850: "#0f0e14",
-          800: "#13121a",
-          700: "#1a1922",
-          600: "#22202c",
+          950: "hsl(var(--ink-950) / <alpha-value>)",
+          900: "hsl(var(--ink-900) / <alpha-value>)",
+          850: "hsl(var(--ink-850) / <alpha-value>)",
+          800: "hsl(var(--ink-800) / <alpha-value>)",
+          700: "hsl(var(--ink-700) / <alpha-value>)",
+          600: "hsl(var(--ink-600) / <alpha-value>)",
         },
         tobacco: {
           50: "#f5ede1",
@@ -33,22 +35,27 @@ const config: Config = {
           900: "#0e0a05",
         },
         ember: {
-          50: "#fff5e0",
-          100: "#ffe3a8",
-          200: "#f5c97a",
-          300: "#e3b04f",
-          400: "#c69437",
-          500: "#a4761e",
-          600: "#7f5912",
-          700: "#5a3e08",
+          50: "hsl(var(--ember-50) / <alpha-value>)",
+          100: "hsl(var(--ember-100) / <alpha-value>)",
+          200: "hsl(var(--ember-200) / <alpha-value>)",
+          300: "hsl(var(--ember-300) / <alpha-value>)",
+          400: "hsl(var(--ember-400) / <alpha-value>)",
+          500: "hsl(var(--ember-500) / <alpha-value>)",
+          600: "hsl(var(--ember-600) / <alpha-value>)",
+          700: "hsl(var(--ember-700) / <alpha-value>)",
         },
         ivory: {
-          DEFAULT: "#f4ecd8",
-          50: "#fbf7ee",
-          100: "#f4ecd8",
-          200: "#e6d8b6",
-          300: "#cfbb8c",
+          DEFAULT: "hsl(var(--ivory) / <alpha-value>)",
+          50: "hsl(var(--ivory-50) / <alpha-value>)",
+          100: "hsl(var(--ivory-100) / <alpha-value>)",
+          200: "hsl(var(--ivory-200) / <alpha-value>)",
+          300: "hsl(var(--ivory-300) / <alpha-value>)",
         },
+        // The codebase leans on `border-white/[0.05]`-style utilities for
+        // hairline borders and hover surfaces. Remap `white` to a theme
+        // variable: white in dark mode, near-black in light mode, so those
+        // hairlines stay visible on paper. (No component uses text-white.)
+        white: "hsl(var(--contrast) / <alpha-value>)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -95,10 +102,9 @@ const config: Config = {
           "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.02) 0%, transparent 40%), radial-gradient(circle at 80% 80%, rgba(198,148,55,0.04) 0%, transparent 40%)",
       },
       boxShadow: {
-        glow: "0 0 40px -10px rgba(198, 148, 55, 0.35)",
-        "glow-sm": "0 0 20px -8px rgba(198, 148, 55, 0.25)",
-        cinematic:
-          "0 20px 60px -20px rgba(0,0,0,0.8), 0 8px 24px -8px rgba(0,0,0,0.6), inset 0 1px 0 0 rgba(255,255,255,0.04)",
+        glow: "var(--shadow-glow)",
+        "glow-sm": "var(--shadow-glow-sm)",
+        cinematic: "var(--shadow-cinematic)",
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -17,13 +17,13 @@ import {
   YAxis,
 } from "recharts";
 
-const COLORS = ["#e3b04f", "#a8845a", "#7f5f3b", "#5c4527", "#c69437", "#f4ecd8"];
+const COLORS = ["#e3b04f", "#a8845a", "#7f5f3b", "#5c4527", "#c69437", "#9c8b6a"];
 const TOOLTIP = {
-  background: "rgba(15,14,20,0.95)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background: "hsl(var(--popover) / 0.97)",
+  border: "1px solid hsl(var(--contrast) / 0.12)",
   borderRadius: 8,
   fontSize: 12,
-  color: "#f4ecd8",
+  color: "hsl(var(--popover-foreground))",
 };
 
 function formatDay(iso: string) {
@@ -45,24 +45,24 @@ export function AIUsageTimeseries({
             <stop offset="100%" stopColor="#e3b04f" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
         <XAxis
           dataKey="date"
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
           tickFormatter={formatDay}
         />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
         />
         <Tooltip
           contentStyle={TOOLTIP}
-          labelStyle={{ color: "rgba(255,255,255,0.5)" }}
+          labelStyle={{ color: "hsl(var(--muted-foreground))" }}
           labelFormatter={formatDay}
         />
         <Area
@@ -86,17 +86,17 @@ export function AICostLine({
   return (
     <ResponsiveContainer width="100%" height={140}>
       <LineChart data={data} margin={{ top: 6, right: 8, left: -16, bottom: 0 }}>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
         <XAxis
           dataKey="date"
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={9}
           tickLine={false}
           axisLine={false}
           tickFormatter={formatDay}
         />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={9}
           tickLine={false}
           axisLine={false}
@@ -104,7 +104,7 @@ export function AICostLine({
         />
         <Tooltip
           contentStyle={TOOLTIP}
-          labelStyle={{ color: "rgba(255,255,255,0.5)" }}
+          labelStyle={{ color: "hsl(var(--muted-foreground))" }}
           formatter={(v: number) => [`$${v.toFixed(4)}`, "Spend"]}
           labelFormatter={formatDay}
         />
@@ -133,16 +133,16 @@ export function PlatformStackedBars({
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart data={data} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
         <XAxis
           dataKey="platform"
-          stroke="rgba(255,255,255,0.4)"
+          stroke="hsl(var(--contrast) / 0.45)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
@@ -174,7 +174,7 @@ export function ContentTypePie({
           innerRadius={48}
           outerRadius={84}
           paddingAngle={2}
-          stroke="rgba(11,10,15,1)"
+          stroke="hsl(var(--ink-900))"
         >
           {data.map((_, i) => (
             <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -194,17 +194,17 @@ export function ReachOverlayChart({
   return (
     <ResponsiveContainer width="100%" height={240}>
       <LineChart data={data} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
         <XAxis
           dataKey="date"
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
           tickFormatter={formatDay}
         />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
@@ -255,10 +255,10 @@ export function ChannelReachBars({
         layout="vertical"
         margin={{ top: 6, right: 16, left: 0, bottom: 0 }}
       >
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" horizontal={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" horizontal={false} />
         <XAxis
           type="number"
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
@@ -271,7 +271,7 @@ export function ChannelReachBars({
         <YAxis
           dataKey="label"
           type="category"
-          stroke="rgba(255,255,255,0.4)"
+          stroke="hsl(var(--contrast) / 0.45)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
@@ -298,17 +298,17 @@ export function TelegramTimeseries({
             <stop offset="100%" stopColor="#a8845a" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
         <XAxis
           dataKey="date"
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
           tickFormatter={formatDay}
         />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
@@ -346,16 +346,16 @@ export function PlatformBars({
   return (
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
         <XAxis
           dataKey="platform"
-          stroke="rgba(255,255,255,0.4)"
+          stroke="hsl(var(--contrast) / 0.45)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}

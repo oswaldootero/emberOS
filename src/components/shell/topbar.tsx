@@ -6,6 +6,7 @@ import { Bell, Command, LogOut, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type UserShape = { email?: string | null; fullName?: string | null } | null;
@@ -54,6 +55,7 @@ export function Topbar({ user }: { user?: UserShape }) {
             <span className="hidden md:inline">Quick Generate</span>
           </a>
         </Button>
+        <ThemeToggle />
         <Button variant="ghost" size="icon" aria-label="Notifications">
           <Bell className="h-4 w-4" />
         </Button>

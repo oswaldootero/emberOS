@@ -19,11 +19,11 @@ import {
 } from "recharts";
 
 const TOOLTIP = {
-  background: "rgba(15,14,20,0.95)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background: "hsl(var(--popover) / 0.97)",
+  border: "1px solid hsl(var(--contrast) / 0.12)",
   borderRadius: 8,
   fontSize: 12,
-  color: "#f4ecd8",
+  color: "hsl(var(--popover-foreground))",
 };
 
 const fmt = (v: number) =>
@@ -60,16 +60,16 @@ export function MonthlyRevenueChart({
             <stop offset="100%" stopColor="#e3b04f" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
         <XAxis
           dataKey="label"
-          stroke="rgba(255,255,255,0.4)"
+          stroke="hsl(var(--contrast) / 0.45)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
@@ -129,7 +129,7 @@ export function ChannelBreakdownPie({
           innerRadius={50}
           outerRadius={88}
           paddingAngle={2}
-          stroke="rgba(11,10,15,1)"
+          stroke="hsl(var(--ink-900))"
         >
           {data.map((d, i) => (
             <Cell key={i} fill={d.fill} />
@@ -152,16 +152,16 @@ export function ScenarioComparisonBars({
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
         <XAxis
           dataKey="name"
-          stroke="rgba(255,255,255,0.4)"
+          stroke="hsl(var(--contrast) / 0.45)"
           fontSize={11}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
@@ -172,7 +172,7 @@ export function ScenarioComparisonBars({
           formatter={(value: number) => usd(value)}
         />
         <Legend
-          wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}
+          wrapperStyle={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}
         />
         <Bar dataKey="annualRevenue" name="Revenue" fill="#7f5f3b" radius={[4, 4, 0, 0]} />
         <Bar dataKey="annualProfit" name="Profit" fill="#e3b04f" radius={[4, 4, 0, 0]} />
@@ -189,10 +189,10 @@ export function MarginLine({
   return (
     <ResponsiveContainer width="100%" height={160}>
       <LineChart data={data} margin={{ top: 6, right: 8, left: -16, bottom: 0 }}>
-        <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-        <XAxis dataKey="label" stroke="rgba(255,255,255,0.4)" fontSize={10} tickLine={false} axisLine={false} />
+        <CartesianGrid stroke="hsl(var(--contrast) / 0.06)" vertical={false} />
+        <XAxis dataKey="label" stroke="hsl(var(--contrast) / 0.45)" fontSize={10} tickLine={false} axisLine={false} />
         <YAxis
-          stroke="rgba(255,255,255,0.3)"
+          stroke="hsl(var(--contrast) / 0.35)"
           fontSize={10}
           tickLine={false}
           axisLine={false}
