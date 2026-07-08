@@ -145,6 +145,12 @@ enum SaleStatus {
   CANCELLED
 }
 
+enum SaleSource {
+  EMBEROS     // invoice authored in EmberOS
+  QUICKBOOKS  // imported from a QuickBooks CSV export
+  EXTERNAL    // recorded manually; invoiced somewhere else
+}
+
 enum OrderPaymentStatus {
   UNPAID
   PAID
@@ -1072,6 +1078,8 @@ model Sale {
   invoiceDate    DateTime    @default(now())
   dueDate        DateTime?
   status         SaleStatus  @default(DRAFT)
+  source         SaleSource  @default(EMBEROS)
+  externalRef    String?     // e.g. the QuickBooks invoice number
 
   // Persisted totals (recomputed on every item write)
   subtotal       Decimal     @db.Decimal(12, 2) @default(0)
@@ -1097,6 +1105,7 @@ model Sale {
   @@index([status])
   @@index([invoiceDate])
   @@index([dueDate])
+  @@index([externalRef])
 }
 
 model SaleItem {

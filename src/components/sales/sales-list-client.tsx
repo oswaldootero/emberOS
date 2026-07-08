@@ -34,6 +34,8 @@ export type SaleListRow = {
   invoiceDate: string;
   dueDate: string | null;
   status: string;
+  source?: string;
+  externalRef?: string | null;
   grandTotal: number;
   amountPaid: number;
 };
@@ -208,12 +210,30 @@ export function SalesListClient({
                   />
                 </td>
                 <td className="py-2.5 px-2">
-                  <Link
-                    href={`/sales/${s.id}`}
-                    className="font-mono text-xs text-ember-200 hover:underline"
-                  >
-                    {s.invoiceNumber}
-                  </Link>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Link
+                      href={`/sales/${s.id}`}
+                      className="font-mono text-xs text-ember-200 hover:underline"
+                    >
+                      {s.invoiceNumber}
+                    </Link>
+                    {s.source === "QUICKBOOKS" && (
+                      <span
+                        className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1 text-[9px] uppercase tracking-wide text-emerald-300"
+                        title={`Imported from QuickBooks${s.externalRef ? ` (invoice ${s.externalRef})` : ""}`}
+                      >
+                        QB
+                      </span>
+                    )}
+                    {s.source === "EXTERNAL" && (
+                      <span
+                        className="rounded border border-white/15 bg-white/[0.05] px-1 text-[9px] uppercase tracking-wide text-muted-foreground"
+                        title="Recorded sale — invoiced outside EmberOS"
+                      >
+                        REC
+                      </span>
+                    )}
+                  </span>
                 </td>
                 <td className="py-2.5 px-2">
                   <Link

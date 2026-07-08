@@ -111,3 +111,26 @@ npx tsx prisma/seed-crm.ts
   reuse the Supabase Storage helpers from the Asset Library.
 - **PDF export**: the invoice page is print-styled; a real PDF can be
   generated from the same data via `@react-pdf/renderer` later.
+
+## Recording external sales & QuickBooks import
+
+Not every sale is invoiced in EmberOS — many go through QuickBooks.
+
+- **Record sale** (`/sales/record`, also on each customer page): quick
+  form — customer, date, total, payment status, optional QB invoice #
+  and description. Creates a Sale with `source=EXTERNAL` (or
+  `QUICKBOOKS` when a QB number is given) and a `REC-<year>-NNNNN`
+  number. Counts in analytics and customer history like any sale.
+- **Import from QuickBooks** (`/sales/import`): upload the CSV from
+  QuickBooks Online → Sales → Invoices → Export. Headers are matched
+  loosely (Date, No., Customer, Total, Balance, Status, Due date,
+  Memo). Two-step: dry-run preview first, then confirm. Status maps
+  Paid/Open/Partially paid/Overdue/Voided → PAID/SENT/PARTIAL/OVERDUE/
+  CANCELLED, with partial amounts derived from Balance. Customers are
+  matched by exact business name (case-insensitive); optionally
+  auto-created. Re-importing the same file is safe — rows whose QB
+  number (`Sale.externalRef`) already exists are skipped.
+- Imported/recorded rows carry a QB / REC chip in the sales list.
+- Pure planning logic lives in `src/server/sales/quickbooks.ts`; the
+  server action (`src/server/actions/quickbooks-import.ts`) adds auth,
+  state, and writes.

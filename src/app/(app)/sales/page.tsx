@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Plus, Receipt, Wallet } from "lucide-react";
+import { FileText, PenLine, Plus, Receipt, Upload, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Card,
@@ -85,6 +85,16 @@ export default async function SalesPage({
         title="Sales"
         description="Invoices, payments, and receivables — every sale tied to a customer."
       >
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/sales/import">
+            <Upload className="h-4 w-4" /> Import QuickBooks
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/sales/record">
+            <PenLine className="h-4 w-4" /> Record sale
+          </Link>
+        </Button>
         <Button variant="gold" size="sm" asChild>
           <Link href="/sales/new">
             <Plus className="h-4 w-4" /> New invoice
