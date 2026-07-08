@@ -254,6 +254,8 @@ model User {
   inventoryAdjustments InventoryAdjustment[]
   paymentLinks        PaymentLink[]     @relation("PaymentLinkCreator")
   sales               Sale[]            @relation("SaleCreator")
+  assignedProspects   Prospect[]        @relation("AssignedProspects")
+  prospectActivities  ProspectActivity[]
 
   @@index([role])
   @@index([supabaseId])
@@ -886,6 +888,7 @@ model Customer {
 
   orders            Order[]
   sales             Sale[]
+  prospect          Prospect?
   paymentLinks      PaymentLink[]
   cardsOnFile       CardOnFile[]
 
@@ -1150,4 +1153,149 @@ model CardOnFile {
 
   @@index([customerId])
   @@index([archivedAt])
+}
+
+// -----------------------------
+// Prospecting — sales intelligence
+// -----------------------------
+// Prospects are pre-customers: discovered or imported cigar lounges /
+// retailers moving through the sales pipeline. AI enrichment + scoring
+// results are stored inline (Json for the full briefing) so profiles
+// render without re-calling OpenAI. Converting creates a Customer and
+// links the two records.
+
+enum ProspectStage {
+  LEAD
+  QUALIFIED
+  CONTACTED
+  MEETING_SCHEDULED
+  MEETING_COMPLETED
+  SAMPLES_DELIVERED
+  NEGOTIATION
+  FIRST_ORDER
+  ACTIVE_CUSTOMER
+  VIP_CUSTOMER
+  LOST
+}
+
+enum ProspectVerdict {
+  PURSUE
+  MAYBE
+  SKIP
+}
+
+enum ProspectActivityKind {
+  CALL
+  MEETING
+  EMAIL
+  SMS
+  NOTE
+  TASK
+  SAMPLE
+  VISIT
+}
+
+model Prospect {
+  id               String          @id @default(cuid())
+  businessName     String
+  dba              String?
+  businessType     String?         // "Retail", "Retail + lounge", "Private club", "Membership lounge"
+
+  street           String?
+  city             String?
+  state            String?
+  zipCode          String?
+  country          String?         @default("USA")
+  latitude         Float?
+  longitude        Float?
+
+  phone            String?
+  email            String?
+  website          String?
+  instagram        String?
+  facebook         String?
+  linkedin         String?
+  twitter          String?
+  youtube          String?
+  yelp             String?
+  googleProfile    String?
+  googleRating     Float?
+  reviewCount      Int?
+  businessHours    String?
+  description      String?         @db.Text
+
+  // Contacts
+  ownerName        String?
+  buyerName        String?
+  managerName      String?
+  contactPhone     String?
+  contactEmail     String?
+  preferredContact String?         // "call" | "email" | "text" | "visit"
+
+  // Business details
+  humidorSize      String?         // "small" | "medium" | "large" | "walk-in"
+  footTraffic      String?
+  demographic      String?
+  locationCount    Int?
+
+  // Pipeline
+  stage            ProspectStage   @default(LEAD)
+  assignedTo       User?           @relation("AssignedProspects", fields: [assignedToId], references: [id])
+  assignedToId     String?
+  territory        String?
+  lastContactDate  DateTime?
+  nextFollowupDate DateTime?
+
+  // AI intelligence
+  aiScore          Int?            // 0–100 Heaven's Leaf compatibility
+  aiScoreReason    String?         @db.Text
+  aiDna            String[]        @default([])   // lounge DNA tags
+  aiVerdict        ProspectVerdict?
+  aiPriority       String?         // "HIGH" | "MEDIUM" | "LOW"
+  aiFirstOrderEst  Decimal?        @db.Decimal(10, 2)
+  aiAnnualEst      Decimal?        @db.Decimal(12, 2)
+  aiWinProbability Int?            // 0–100
+  aiBriefing       Json?           // full structured sales briefing
+  aiEnrichment     Json?           // discovered links/info + confidence
+  aiAnalyzedAt     DateTime?
+
+  tags             String[]        @default([])
+  notes            String?         @db.Text
+  archivedAt       DateTime?
+
+  // Set when converted to a real customer
+  customer         Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId       String?         @unique
+
+  activities       ProspectActivity[]
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([stage])
+  @@index([state, city])
+  @@index([aiScore])
+  @@index([assignedToId])
+  @@index([nextFollowupDate])
+  @@index([archivedAt])
+  @@index([businessName])
+}
+
+model ProspectActivity {
+  id          String               @id @default(cuid())
+  prospect    Prospect             @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  prospectId  String
+
+  kind        ProspectActivityKind
+  summary     String
+  detail      String?              @db.Text
+  dueAt       DateTime?            // for TASK / follow-ups
+  completedAt DateTime?
+
+  createdBy   User?                @relation(fields: [createdById], references: [id])
+  createdById String?
+  createdAt   DateTime             @default(now())
+
+  @@index([prospectId, createdAt])
+  @@index([dueAt])
 }
