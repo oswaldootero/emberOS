@@ -25,12 +25,20 @@ export type ProspectListParams = {
   state?: string;
   city?: string;
   minScore?: number;
+  minIcp?: number;
   verdict?: ProspectVerdict | "";
   dna?: string[];
   needsFollowUp?: boolean;
   assignedToId?: string;
   archived?: boolean;
-  sort?: "aiScore" | "updatedAt" | "businessName" | "nextFollowupDate" | "createdAt";
+  sort?:
+    | "aiScore"
+    | "icpScore"
+    | "lastVisitDate"
+    | "updatedAt"
+    | "businessName"
+    | "nextFollowupDate"
+    | "createdAt";
   dir?: "asc" | "desc";
   page?: number;
 };
@@ -53,6 +61,7 @@ export function buildProspectWhere(p: ProspectListParams): Prisma.ProspectWhereI
     ...(p.state ? { state: { equals: p.state, mode: "insensitive" } } : {}),
     ...(p.city ? { city: { contains: p.city, mode: "insensitive" } } : {}),
     ...(p.minScore != null ? { aiScore: { gte: p.minScore } } : {}),
+    ...(p.minIcp != null ? { icpScore: { gte: p.minIcp } } : {}),
     ...(p.verdict ? { aiVerdict: p.verdict } : {}),
     ...(p.dna?.length ? { aiDna: { hasSome: p.dna } } : {}),
     ...(p.needsFollowUp
@@ -77,6 +86,8 @@ const LIST_SELECT = {
   aiPriority: true,
   aiDna: true,
   aiFirstOrderEst: true,
+  icpScore: true,
+  lastVisitDate: true,
   nextFollowupDate: true,
   lastContactDate: true,
   customerId: true,
@@ -99,6 +110,8 @@ export type ProspectListRow = {
   aiPriority: string | null;
   aiDna: string[];
   aiFirstOrderEst: number | null;
+  icpScore: number | null;
+  lastVisitDate: string | null;
   nextFollowupDate: string | null;
   lastContactDate: string | null;
   customerId: string | null;
@@ -124,6 +137,8 @@ function toRow(x: ListPayload): ProspectListRow {
     aiPriority: x.aiPriority,
     aiDna: x.aiDna,
     aiFirstOrderEst: x.aiFirstOrderEst != null ? n(x.aiFirstOrderEst) : null,
+    icpScore: x.icpScore,
+    lastVisitDate: x.lastVisitDate?.toISOString() ?? null,
     nextFollowupDate: x.nextFollowupDate?.toISOString() ?? null,
     lastContactDate: x.lastContactDate?.toISOString() ?? null,
     customerId: x.customerId,
@@ -142,8 +157,8 @@ export async function loadProspectList(params: ProspectListParams) {
     prisma.prospect.findMany({
       where,
       orderBy:
-        sort === "aiScore"
-          ? [{ aiScore: { sort: dir, nulls: "last" } }, { updatedAt: "desc" }]
+        sort === "aiScore" || sort === "icpScore" || sort === "lastVisitDate" || sort === "nextFollowupDate"
+          ? [{ [sort]: { sort: dir, nulls: "last" } }, { updatedAt: "desc" }]
           : { [sort]: dir },
       skip: (page - 1) * PROSPECTS_PAGE_SIZE,
       take: PROSPECTS_PAGE_SIZE,

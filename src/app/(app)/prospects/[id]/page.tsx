@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScoreBadge, VerdictBadge } from "@/components/prospects/score-badge";
+import { IcpScoreBadge, ScoreBadge, VerdictBadge } from "@/components/prospects/score-badge";
+import { IcpCard, type IcpDetails } from "@/components/prospects/icp-card";
 import { ProspectProfileActions } from "@/components/prospects/prospect-profile-actions";
 import {
   ProspectActivityClient,
@@ -28,6 +29,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { n } from "@/server/sales";
 import type { ProspectBriefing } from "@/server/ai/prospecting";
+import type { IcpAnswers } from "@/lib/icp";
 
 export const metadata = { title: "Prospect" };
 export const dynamic = "force-dynamic";
@@ -63,6 +65,19 @@ export default async function ProspectDetailPage({
   if (!p) notFound();
 
   const briefing = (p.aiBriefing ?? null) as ProspectBriefing | null;
+  const icpAnswers = (p.icpAnswers ?? {}) as IcpAnswers;
+  const icpDetails: IcpDetails = {
+    currentBrands: p.currentBrands ?? "",
+    humidorSize: p.humidorSize ?? "",
+    facingsCount: p.facingsCount?.toString() ?? "",
+    loungeSeats: p.loungeSeats?.toString() ?? "",
+    locationCount: p.locationCount?.toString() ?? "",
+    decisionMakerName: p.decisionMakerName ?? "",
+    decisionMakerRole: p.decisionMakerRole ?? "",
+    lastVisitDate: p.lastVisitDate?.toISOString().slice(0, 10) ?? "",
+    nextFollowupDate: p.nextFollowupDate?.toISOString().slice(0, 10) ?? "",
+    icpNotes: p.icpNotes ?? "",
+  };
   const activities: ActivityRow[] = p.activities.map((a) => ({
     id: a.id,
     kind: a.kind,
@@ -94,6 +109,7 @@ export default async function ProspectDetailPage({
                 <h1 className="font-display text-2xl text-ivory truncate">
                   {p.businessName}
                 </h1>
+                {p.icpScore != null && <IcpScoreBadge score={p.icpScore} showRating />}
                 <VerdictBadge verdict={p.aiVerdict} />
                 {p.aiPriority && (
                   <Badge
@@ -139,8 +155,15 @@ export default async function ProspectDetailPage({
       </div>
 
       <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
-        {/* Left: AI briefing + activity */}
+        {/* Left: ICP + AI briefing + activity */}
         <div className="space-y-6">
+          <IcpCard
+            prospectId={p.id}
+            initialAnswers={icpAnswers}
+            initialDetails={icpDetails}
+            scoredAt={p.icpScoredAt?.toISOString() ?? null}
+          />
+
           {briefing ? (
             <Card>
               <CardHeader>
@@ -274,6 +297,25 @@ export default async function ProspectDetailPage({
               <KV label="Foot traffic" value={p.footTraffic ?? "—"} />
               <KV label="Demographic" value={p.demographic ?? "—"} />
               <KV label="Locations" value={p.locationCount?.toString() ?? "—"} />
+              <KV label="Facings" value={p.facingsCount?.toString() ?? "—"} />
+              <KV label="Lounge seats" value={p.loungeSeats?.toString() ?? "—"} />
+              <KV
+                label="Decision maker"
+                value={
+                  p.decisionMakerName
+                    ? `${p.decisionMakerName}${p.decisionMakerRole ? ` (${p.decisionMakerRole})` : ""}`
+                    : "—"
+                }
+              />
+              <KV
+                label="Last visit"
+                value={
+                  p.lastVisitDate
+                    ? p.lastVisitDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                    : "—"
+                }
+              />
+              <KV label="Brands carried" value={p.currentBrands ?? "—"} />
               <KV label="Territory" value={p.territory ?? "—"} />
               <KV
                 label="Assigned to"

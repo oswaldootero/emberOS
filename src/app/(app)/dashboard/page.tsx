@@ -7,6 +7,7 @@ import {
   Flame,
   Send,
   Sparkles,
+  Target,
   TrendingUp,
   UploadCloud,
   Users,
@@ -27,12 +28,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { getDashboardSnapshot } from "@/server/dashboard";
+import { prisma } from "@/lib/prisma";
+import { icpTier } from "@/lib/icp";
+import { StageBadge } from "@/components/prospects/score-badge";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const snapshot = await getDashboardSnapshot();
+  const [snapshot, topProspects] = await Promise.all([
+    getDashboardSnapshot(),
+    prisma.prospect.findMany({
+      where: { archivedAt: null, customerId: null, icpScore: { not: null } },
+      orderBy: [{ icpScore: "desc" }, { updatedAt: "desc" }],
+      take: 5,
+      select: {
+        id: true,
+        businessName: true,
+        city: true,
+        state: true,
+        stage: true,
+        icpScore: true,
+        assignedTo: { select: { fullName: true, email: true } },
+      },
+    }),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -100,6 +120,61 @@ export default async function DashboardPage() {
           }
         />
       </div>
+
+      {/* Top prospects by ICP */}
+      {topProspects.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-ember-300" />
+                Top Prospects
+              </CardTitle>
+              <CardDescription>
+                Highest ICP scores still waiting on a first order.
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/prospects?sort=icpScore%3Adesc">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="divide-y divide-white/[0.04]">
+            {topProspects.map((p) => {
+              const tier = icpTier(p.icpScore!);
+              return (
+                <div key={p.id} className="py-2.5 flex items-center gap-3">
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center h-7 w-9 rounded-md text-xs font-semibold tabular-nums border shrink-0",
+                      tier.badgeClass,
+                    )}
+                  >
+                    {p.icpScore}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/prospects/${p.id}`}
+                      className="text-sm text-ivory hover:text-ember-200 truncate block"
+                    >
+                      {p.businessName}
+                    </Link>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      <span className={tier.textClass}>{tier.rating}</span>
+                      {[p.city, p.state].filter(Boolean).length > 0 &&
+                        ` · ${[p.city, p.state].filter(Boolean).join(", ")}`}
+                      {p.assignedTo &&
+                        ` · ${p.assignedTo.fullName ?? p.assignedTo.email}`}
+                    </div>
+                  </div>
+                  <div className="hidden sm:block shrink-0">
+                    <StageBadge stage={p.stage} />
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Engagement + Queue */}
       <div className="grid lg:grid-cols-3 gap-6">

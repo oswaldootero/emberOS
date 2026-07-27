@@ -1259,6 +1259,18 @@ model Prospect {
   aiEnrichment     Json?           // discovered links/info + confidence
   aiAnalyzedAt     DateTime?
 
+  // ICP scoring — rep-answered checklist (criteria/weights in src/lib/icp.ts)
+  icpAnswers        Json?          // raw answers keyed by criterion key
+  icpScore          Int?           // 0–100, computed server-side from answers
+  icpScoredAt       DateTime?
+  currentBrands     String?        @db.Text
+  facingsCount      Int?
+  loungeSeats       Int?
+  decisionMakerName String?
+  decisionMakerRole String?
+  lastVisitDate     DateTime?
+  icpNotes          String?        @db.Text
+
   tags             String[]        @default([])
   notes            String?         @db.Text
   archivedAt       DateTime?
@@ -1275,6 +1287,8 @@ model Prospect {
   @@index([stage])
   @@index([state, city])
   @@index([aiScore])
+  @@index([icpScore])
+  @@index([lastVisitDate])
   @@index([assignedToId])
   @@index([nextFollowupDate])
   @@index([archivedAt])

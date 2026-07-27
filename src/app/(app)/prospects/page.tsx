@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  BarChart3,
   CalendarClock,
   Columns3,
   List,
@@ -46,6 +47,7 @@ export default async function ProspectsPage({
     state?: string;
     city?: string;
     minScore?: string;
+    minIcp?: string;
     verdict?: string;
     dna?: string;
     followup?: string;
@@ -59,17 +61,27 @@ export default async function ProspectsPage({
   const sp = await searchParams;
   const view = sp.view === "board" ? "board" : "list";
 
+  // Sort comes as "field:dir" from the sort dropdown, or as separate
+  // sort/dir params from older links — accept both.
+  const SORT_FIELDS = ["aiScore", "icpScore", "lastVisitDate", "updatedAt", "businessName", "nextFollowupDate", "createdAt"];
+  const [rawSort, rawDir] = (sp.sort ?? "").split(":");
+  const sortField = SORT_FIELDS.includes(rawSort ?? "")
+    ? (rawSort as ProspectListParams["sort"])
+    : "updatedAt";
+  const sortDir = (rawDir ?? sp.dir) === "asc" ? "asc" : "desc";
+
   const params: ProspectListParams = {
     q: sp.q || undefined,
     stage: (sp.stage as ProspectStage) || "",
     state: sp.state || undefined,
     city: sp.city || undefined,
     minScore: sp.minScore ? Number(sp.minScore) : undefined,
+    minIcp: sp.minIcp ? Number(sp.minIcp) : undefined,
     verdict: (sp.verdict as ProspectVerdict) || "",
     dna: sp.dna ? sp.dna.split(",").filter(Boolean) : undefined,
     needsFollowUp: sp.followup === "1",
-    sort: (sp.sort as ProspectListParams["sort"]) ?? "updatedAt",
-    dir: sp.dir === "asc" ? "asc" : "desc",
+    sort: sortField,
+    dir: sortDir,
     page: Number(sp.page) || 1,
   };
 
@@ -87,6 +99,7 @@ export default async function ProspectsPage({
     state: sp.state,
     city: sp.city,
     minScore: sp.minScore,
+    minIcp: sp.minIcp,
     verdict: sp.verdict,
     dna: sp.dna,
     followup: sp.followup,
@@ -98,11 +111,21 @@ export default async function ProspectsPage({
   const activeFilters = [
     sp.stage && `stage: ${sp.stage.toLowerCase()}`,
     sp.state && `state: ${sp.state}`,
-    sp.minScore && `score ≥ ${sp.minScore}`,
+    sp.minScore && `AI score ≥ ${sp.minScore}`,
+    sp.minIcp && `ICP ≥ ${sp.minIcp}`,
     sp.verdict && `verdict: ${sp.verdict.toLowerCase()}`,
     sp.dna && `DNA: ${sp.dna}`,
     sp.followup === "1" && "needs follow-up",
   ].filter(Boolean);
+
+  const SORT_OPTIONS = [
+    { value: "", label: "Recently updated" },
+    { value: "icpScore:desc", label: "Highest ICP score" },
+    { value: "icpScore:asc", label: "Lowest ICP score" },
+    { value: "aiScore:desc", label: "Highest AI score" },
+    { value: "lastVisitDate:desc", label: "Recently visited" },
+    { value: "nextFollowupDate:asc", label: "Follow-up needed" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -111,6 +134,11 @@ export default async function ProspectsPage({
         title="Prospecting"
         description="Find, score, and win the next Heaven's Leaf accounts — AI does the homework."
       >
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/prospects/reports">
+            <BarChart3 className="h-4 w-4" /> Reports
+          </Link>
+        </Button>
         <Button variant="outline" size="sm" asChild>
           <Link href="/prospects/import">
             <Upload className="h-4 w-4" /> Import CSV
@@ -184,6 +212,28 @@ export default async function ProspectsPage({
                   <option value="">All stages</option>
                   {STAGES.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+                <select
+                  name="minIcp"
+                  defaultValue={sp.minIcp ?? ""}
+                  className="h-8 rounded-md border border-white/10 bg-ink-900 px-2 text-xs text-ivory"
+                  title="Minimum ICP score"
+                >
+                  <option value="">Any ICP</option>
+                  <option value="40">ICP 40+</option>
+                  <option value="60">ICP 60+</option>
+                  <option value="75">ICP 75+</option>
+                  <option value="90">ICP 90+</option>
+                </select>
+                <select
+                  name="sort"
+                  defaultValue={sp.sort ?? ""}
+                  className="h-8 rounded-md border border-white/10 bg-ink-900 px-2 text-xs text-ivory"
+                  title="Sort order"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
                 <Button type="submit" variant="outline" size="sm">Apply</Button>

@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ScoreBadge, VerdictBadge, StageBadge } from "./score-badge";
+import { IcpScoreBadge, ScoreBadge, StageBadge } from "./score-badge";
+import { icpTier } from "@/lib/icp";
 import type { ProspectListRow } from "@/server/prospecting";
 import {
   batchAnalyzeProspects,
@@ -166,16 +167,17 @@ export function ProspectListClient({
       </div>
 
       <div className="overflow-x-auto -mx-2">
-        <table className="w-full text-sm min-w-[860px]">
+        <table className="w-full text-sm min-w-[960px]">
           <thead>
             <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-white/[0.05]">
               <th className="py-2 px-2 w-8" />
-              <th className="text-left font-normal py-2 px-2">Score</th>
+              <th className="text-left font-normal py-2 px-2">ICP</th>
+              <th className="text-left font-normal py-2 px-2">AI</th>
               <th className="text-left font-normal py-2 px-2">Business</th>
               <th className="text-left font-normal py-2 px-2 hidden md:table-cell">Location</th>
               <th className="text-left font-normal py-2 px-2">Stage</th>
-              <th className="text-left font-normal py-2 px-2 hidden lg:table-cell">Verdict</th>
-              <th className="text-left font-normal py-2 px-2 hidden lg:table-cell">DNA</th>
+              <th className="text-left font-normal py-2 px-2 hidden lg:table-cell">Rep</th>
+              <th className="text-left font-normal py-2 px-2 hidden lg:table-cell">Last visit</th>
               <th className="text-left font-normal py-2 px-2 hidden md:table-cell">Follow-up</th>
             </tr>
           </thead>
@@ -190,6 +192,16 @@ export function ProspectListClient({
                     aria-label={`Select ${p.businessName}`}
                     className="h-4 w-4 rounded border-white/20 bg-transparent accent-[#c69437] cursor-pointer"
                   />
+                </td>
+                <td className="py-2.5 px-2">
+                  <div className="space-y-0.5">
+                    <IcpScoreBadge score={p.icpScore} />
+                    {p.icpScore != null && (
+                      <div className={`text-[9px] whitespace-nowrap ${icpTier(p.icpScore).textClass}`}>
+                        {icpTier(p.icpScore).rating}
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td className="py-2.5 px-2">
                   <ScoreBadge score={p.aiScore} />
@@ -230,17 +242,13 @@ export function ProspectListClient({
                     </SelectContent>
                   </Select>
                 </td>
-                <td className="py-2.5 px-2 hidden lg:table-cell">
-                  <VerdictBadge verdict={p.aiVerdict} />
+                <td className="py-2.5 px-2 text-xs text-muted-foreground hidden lg:table-cell max-w-[130px] truncate">
+                  {p.assignedTo ?? "—"}
                 </td>
-                <td className="py-2.5 px-2 hidden lg:table-cell">
-                  <div className="flex flex-wrap gap-1 max-w-[200px]">
-                    {p.aiDna.slice(0, 3).map((t) => (
-                      <span key={t} className="rounded-full border border-white/10 px-1.5 py-0.5 text-[9px] text-muted-foreground">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
+                <td className="py-2.5 px-2 text-xs text-muted-foreground hidden lg:table-cell">
+                  {p.lastVisitDate
+                    ? new Date(p.lastVisitDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                    : "—"}
                 </td>
                 <td className="py-2.5 px-2 text-xs text-muted-foreground hidden md:table-cell">
                   {p.nextFollowupDate
