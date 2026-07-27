@@ -1,13 +1,20 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Routes that are externally callable and verify their own signatures
+// Routes that are externally callable and verify their own signatures,
+// plus PWA plumbing that browsers fetch without auth cookies
+// (service worker, manifest, icons, offline fallback).
 const PUBLIC_PATHS = [
   "/login",
   "/auth",
   "/api/cron",
   "/api/webhooks",
   "/pay",
+  "/sw.js",
+  "/swe-worker",
+  "/manifest.webmanifest",
+  "/icon",
+  "/~offline",
 ];
 
 export async function middleware(req: NextRequest) {

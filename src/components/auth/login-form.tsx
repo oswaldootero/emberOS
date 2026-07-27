@@ -20,6 +20,8 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
@@ -50,20 +52,57 @@ export function LoginForm() {
     }
   }
 
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (code.trim().length < 6) return;
+    setVerifying(true);
+    try {
+      const sb = supabaseBrowser();
+      const { error } = await sb.auth.verifyOtp({
+        email,
+        token: code.trim(),
+        type: "email",
+      });
+      if (error) throw error;
+      router.push(next);
+      router.refresh();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "That code didn't work — try again.",
+      );
+      setVerifying(false);
+    }
+  }
+
   if (sent) {
     return (
       <div className="space-y-3 text-sm">
         <div className="rounded-lg border border-ember-500/20 bg-ember-500/5 p-4 text-ivory">
           A sign-in link has been sent to{" "}
           <span className="font-medium text-ember-200">{email}</span>. Open it on
-          this device to complete sign-in.
+          this device — or enter the 6-digit code from the email below.
         </div>
+        <form onSubmit={handleVerifyCode} className="flex gap-2">
+          <Input
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="6-digit code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            className="tracking-[0.3em] text-center font-mono"
+            autoFocus
+          />
+          <Button type="submit" variant="gold" disabled={verifying || code.length < 6}>
+            {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+          </Button>
+        </form>
         <Button
           variant="ghost"
           className="w-full"
           onClick={() => {
             setSent(false);
             setEmail("");
+            setCode("");
           }}
         >
           Use a different email

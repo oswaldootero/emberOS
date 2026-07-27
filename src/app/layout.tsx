@@ -35,6 +35,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   ),
+  appleWebApp: {
+    capable: true,
+    title: "EmberOS",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: "/icons/apple",
+  },
 };
 
 export const viewport: Viewport = {

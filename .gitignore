@@ -16,3 +16,7 @@ coverage/
 .claude/
 prisma/migrations/dev.db*
 tsconfig.tsbuildinfo
+
+# Serwist generated service worker
+public/sw*
+public/swe-worker*

@@ -1,0 +1,88 @@
+<!--
+  Supabase Magic Link email template for EmberOS.
+  Paste into: Supabase Dashboard → Authentication → Email Templates → Magic Link
+  Suggested subject: Your EmberOS sign-in code
+  Variables used: {{ .ConfirmationURL }} (one-tap link) and {{ .Token }} (6-digit
+  code for signing in inside the installed app).
+-->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#0a0a0f;padding:32px 16px;">
+  <tr>
+    <td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:480px;background-color:#12111a;border:1px solid #2a2733;border-radius:12px;padding:40px 32px;font-family:Georgia,'Times New Roman',serif;">
+        <!-- Brand -->
+        <tr>
+          <td align="center" style="padding-bottom:8px;">
+            <div style="font-size:40px;line-height:1;">🔥</div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-bottom:4px;">
+            <div style="color:#f0e6d2;font-size:26px;letter-spacing:0.5px;">EmberOS</div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-bottom:28px;">
+            <div style="color:#8a8494;font-size:11px;letter-spacing:3px;text-transform:uppercase;font-family:Arial,Helvetica,sans-serif;">
+              Heaven's Leaf &middot; Mission Control
+            </div>
+          </td>
+        </tr>
+
+        <!-- Message -->
+        <tr>
+          <td align="center" style="padding-bottom:24px;">
+            <div style="color:#c9c3d1;font-size:15px;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">
+              The fire is lit. Tap the button to sign in on this device:
+            </div>
+          </td>
+        </tr>
+
+        <!-- Sign-in button -->
+        <tr>
+          <td align="center" style="padding-bottom:32px;">
+            <a href="{{ .ConfirmationURL }}"
+               style="display:inline-block;background-color:#c69437;color:#0a0a0f;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.5px;padding:14px 36px;border-radius:8px;">
+              Sign in to EmberOS
+            </a>
+          </td>
+        </tr>
+
+        <!-- OTP code (for the installed app) -->
+        <tr>
+          <td align="center" style="padding-bottom:8px;">
+            <div style="color:#8a8494;font-size:12px;font-family:Arial,Helvetica,sans-serif;">
+              Using the EmberOS app? Enter this code instead:
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-bottom:32px;">
+            <div style="display:inline-block;background-color:#0a0a0f;border:1px solid #3a3644;border-radius:8px;padding:14px 28px;">
+              <span style="color:#e0a848;font-size:28px;letter-spacing:10px;font-family:'Courier New',Courier,monospace;font-weight:bold;">{{ .Token }}</span>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td align="center" style="border-top:1px solid #2a2733;padding-top:24px;">
+            <div style="color:#6b6577;font-size:11px;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">
+              This link and code expire in one hour and can be used once.<br />
+              If you didn't request this, you can safely ignore it — no one gets in without it.
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:480px;">
+        <tr>
+          <td align="center" style="padding-top:16px;">
+            <div style="color:#4a4554;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-family:Arial,Helvetica,sans-serif;">
+              Brotherhood &middot; Ritual &middot; Slow Living
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
