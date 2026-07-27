@@ -7,11 +7,18 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { GlobalSearch } from "@/components/shell/global-search";
+import { MobileNav } from "@/components/shell/mobile-nav";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type UserShape = { email?: string | null; fullName?: string | null } | null;
 
-export function Topbar({ user }: { user?: UserShape }) {
+export function Topbar({
+  user,
+  isAdmin = false,
+}: {
+  user?: UserShape;
+  isAdmin?: boolean;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
 
@@ -33,7 +40,8 @@ export function Topbar({ user }: { user?: UserShape }) {
   const display = user?.fullName ?? user?.email ?? "Brother";
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-white/[0.05] bg-ink-950/70 px-4 lg:px-6 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 md:gap-4 border-b border-white/[0.05] bg-ink-950/70 px-4 lg:px-6 backdrop-blur-xl">
+      <MobileNav isAdmin={isAdmin} />
       <GlobalSearch />
 
       <div className="ml-auto flex items-center gap-2">

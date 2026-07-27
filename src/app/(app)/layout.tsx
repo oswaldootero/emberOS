@@ -15,6 +15,7 @@ export default async function AppLayout({
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
           user={user ? { email: user.email, fullName: user.fullName } : null}
+          isAdmin={user?.role === "ADMIN"}
         />
         <main className="flex-1 px-4 md:px-8 py-6 md:py-8 max-w-[1440px] w-full mx-auto">
           {children}
