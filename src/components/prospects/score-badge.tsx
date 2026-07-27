@@ -1,5 +1,47 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { icpTier } from "@/lib/icp";
+
+export function IcpScoreBadge({
+  score,
+  showRating,
+}: {
+  score: number | null;
+  showRating?: boolean;
+}) {
+  if (score == null) {
+    return <span className="text-[10px] text-muted-foreground italic">—</span>;
+  }
+  const tier = icpTier(score);
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className={cn(
+          "inline-flex items-center justify-center h-7 w-9 rounded-md text-xs font-semibold tabular-nums border",
+          tier.badgeClass,
+        )}
+        title={`ICP: ${score}/100 · ${tier.rating}`}
+      >
+        {score}
+      </span>
+      {showRating && (
+        <span className={cn("text-[10px] whitespace-nowrap", tier.textClass)}>
+          {tier.rating}
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function IcpRatingLabel({ score }: { score: number | null }) {
+  if (score == null) {
+    return <span className="text-[10px] text-muted-foreground italic">unscored</span>;
+  }
+  const tier = icpTier(score);
+  return (
+    <span className={cn("text-xs whitespace-nowrap", tier.textClass)}>{tier.rating}</span>
+  );
+}
 
 export function ScoreBadge({ score }: { score: number | null }) {
   if (score == null) {

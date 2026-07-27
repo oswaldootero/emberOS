@@ -20,32 +20,11 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
   const errKey = params.get("error");
   const errMsg = errKey ? ERRORS[errKey] : null;
-
-  async function handleGoogle() {
-    setGoogleLoading(true);
-    try {
-      const sb = supabaseBrowser();
-      const { error } = await sb.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-        },
-      });
-      if (error) throw error;
-      // The browser is redirected by Supabase — if we get here, no-op
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Could not start Google sign-in.",
-      );
-      setGoogleLoading(false);
-    }
-  }
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
@@ -102,27 +81,6 @@ export function LoginForm() {
         </div>
       )}
 
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={handleGoogle}
-        disabled={googleLoading || sending}
-      >
-        {googleLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <GoogleG />
-        )}
-        {googleLoading ? "Redirecting…" : "Continue with Google"}
-      </Button>
-
-      <div className="flex items-center gap-3 text-[10px] uppercase tracking-wider text-muted-foreground">
-        <div className="h-px flex-1 bg-white/[0.06]" />
-        <span>or sign in with email</span>
-        <div className="h-px flex-1 bg-white/[0.06]" />
-      </div>
-
       <form onSubmit={handleMagicLink} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -141,7 +99,7 @@ export function LoginForm() {
           type="submit"
           variant="gold"
           className="w-full"
-          disabled={sending || googleLoading}
+          disabled={sending}
         >
           {sending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -152,33 +110,5 @@ export function LoginForm() {
         </Button>
       </form>
     </div>
-  );
-}
-
-function GoogleG() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 18 18"
-      className="h-4 w-4"
-      fill="none"
-    >
-      <path
-        d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.614z"
-        fill="#4285F4"
-      />
-      <path
-        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
-        fill="#34A853"
-      />
-      <path
-        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
-        fill="#EA4335"
-      />
-    </svg>
   );
 }

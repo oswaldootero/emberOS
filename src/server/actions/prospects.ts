@@ -12,6 +12,12 @@ import {
   parseProspectQueryAI,
   type ProspectSearchFilters,
 } from "@/server/ai/prospecting";
+import {
+  ICP_CRITERIA,
+  computeIcpScore,
+  isValidAnswer,
+  type IcpAnswers,
+} from "@/lib/icp";
 
 export type ProspectResult =
   | { ok: true; id: string }
@@ -172,6 +178,87 @@ export async function bulkDeleteProspects(
   });
   revalidateProspects();
   return { ok: true, id: String(r.count) };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ICP assessment
+// ─────────────────────────────────────────────────────────────────
+
+const IcpDetailsSchema = z.object({
+  currentBrands: z.string().max(2000).optional().nullable(),
+  humidorSize: z.string().max(40).optional().nullable(),
+  facingsCount: z.number().int().min(0).max(100000).optional().nullable(),
+  loungeSeats: z.number().int().min(0).max(100000).optional().nullable(),
+  locationCount: z.number().int().min(1).max(100000).optional().nullable(),
+  decisionMakerName: z.string().max(120).optional().nullable(),
+  decisionMakerRole: z.string().max(120).optional().nullable(),
+  lastVisitDate: z.string().optional().nullable(),
+  nextFollowupDate: z.string().optional().nullable(),
+  icpNotes: z.string().max(5000).optional().nullable(),
+});
+
+export async function saveIcpAssessment(
+  id: string,
+  rawAnswers: unknown,
+  rawDetails: unknown,
+): Promise<
+  | { ok: true; id: string; score: number }
+  | { ok: false; error: string }
+> {
+  const user = await requireUser();
+  const p = await prisma.prospect.findUnique({ where: { id }, select: { id: true } });
+  if (!p) return { ok: false, error: "Prospect not found." };
+
+  // Answers: keep only known criteria with legal values; skipped ones score 0.
+  if (typeof rawAnswers !== "object" || rawAnswers === null || Array.isArray(rawAnswers)) {
+    return { ok: false, error: "Invalid ICP answers." };
+  }
+  const answers: IcpAnswers = {};
+  for (const c of ICP_CRITERIA) {
+    const v = (rawAnswers as Record<string, unknown>)[c.key];
+    if (v == null) continue;
+    if (!isValidAnswer(c, v)) return { ok: false, error: `Invalid answer for "${c.label}".` };
+    answers[c.key] = v;
+  }
+
+  const parsed = IcpDetailsSchema.safeParse(rawDetails ?? {});
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+  const d = nullifyEmpty(parsed.data);
+
+  const { score, answered } = computeIcpScore(answers);
+
+  await prisma.prospect.update({
+    where: { id },
+    data: {
+      icpAnswers: answers as object,
+      icpScore: answered > 0 ? score : null,
+      icpScoredAt: answered > 0 ? new Date() : null,
+      currentBrands: d.currentBrands,
+      humidorSize: d.humidorSize,
+      facingsCount: d.facingsCount,
+      loungeSeats: d.loungeSeats,
+      locationCount: d.locationCount,
+      decisionMakerName: d.decisionMakerName,
+      decisionMakerRole: d.decisionMakerRole,
+      lastVisitDate: d.lastVisitDate ? new Date(d.lastVisitDate) : null,
+      nextFollowupDate:
+        d.nextFollowupDate === undefined
+          ? undefined
+          : d.nextFollowupDate
+            ? new Date(d.nextFollowupDate)
+            : null,
+      icpNotes: d.icpNotes,
+    },
+  });
+  await audit("prospects.icp_scored", {
+    actorId: user.id,
+    entityType: "Prospect",
+    entityId: id,
+    diff: { icpScore: answered > 0 ? score : null, answered },
+  });
+  revalidateProspects(id);
+  revalidatePath("/dashboard");
+  return { ok: true, id, score };
 }
 
 // ─────────────────────────────────────────────────────────────────
