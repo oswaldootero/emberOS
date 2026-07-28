@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Flame, Menu, X } from "lucide-react";
@@ -39,7 +40,11 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
         <Menu className="h-5 w-5" />
       </Button>
 
-      {open && (
+      {/* Portal to <body>: the topbar's backdrop-filter would otherwise
+          become the containing block for this fixed overlay and trap it
+          inside the 56px header. */}
+      {open &&
+        createPortal(
         <div className="fixed inset-0 z-50 lg:hidden">
           {/* Backdrop */}
           <div
@@ -48,7 +53,7 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
           />
 
           {/* Drawer */}
-          <div className="absolute inset-y-0 left-0 w-[290px] max-w-[85vw] flex flex-col bg-ink-900 border-r border-white/[0.08] shadow-cinematic">
+          <div className="absolute inset-y-0 left-0 w-[290px] max-w-[85vw] flex flex-col bg-ink-900 border-r border-white/[0.08] shadow-cinematic pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -160,7 +165,8 @@ export function MobileNav({ isAdmin = false }: { isAdmin?: boolean }) {
               })}
             </nav>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
