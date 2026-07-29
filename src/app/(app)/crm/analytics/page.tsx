@@ -145,7 +145,7 @@ export default async function CRMAnalyticsPage() {
                 data={a.salesByType.map((t) => ({ name: pretty(t.type), value: t.revenue }))}
                 nameKey="name"
                 valueKey="value"
-                valueFormatter={fmtUsd}
+                format="usd"
               />
             )}
           </CardContent>

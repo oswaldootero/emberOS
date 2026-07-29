@@ -20,3 +20,4 @@ tsconfig.tsbuildinfo
 # Serwist generated service worker
 public/sw*
 public/swe-worker*
+.env*

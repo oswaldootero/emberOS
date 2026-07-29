@@ -137,16 +137,24 @@ export function CustomerGrowthChart({
   );
 }
 
+const fmtUsd = (v: number) =>
+  Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(v);
+
 export function BreakdownPie({
   data,
   nameKey,
   valueKey,
-  valueFormatter,
+  format,
 }: {
   data: Record<string, string | number>[];
   nameKey: string;
   valueKey: string;
-  valueFormatter?: (v: number) => string;
+  /** Serializable format flag — functions can't cross the RSC boundary */
+  format?: "usd";
 }) {
   return (
     <div className="h-56">
@@ -170,7 +178,7 @@ export function BreakdownPie({
           <Tooltip
             contentStyle={TOOLTIP}
             formatter={(v: number | string, name: string) => [
-              valueFormatter ? valueFormatter(Number(v)) : v,
+              format === "usd" ? fmtUsd(Number(v)) : v,
               name,
             ]}
           />
