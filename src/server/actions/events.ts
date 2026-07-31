@@ -121,6 +121,31 @@ export async function goLive(id: string): Promise<EventResult> {
 }
 
 /**
+ * Plain close: stop selling but keep the event unsealed — it can still
+ * be reopened, sealed, or deleted from its report page.
+ */
+export async function closeEvent(id: string): Promise<EventResult> {
+  const user = await requireUser();
+  const ev = await prisma.sellingEvent.findUnique({
+    where: { id },
+    select: { status: true, sealedAt: true },
+  });
+  if (!ev) return { ok: false, error: "Event not found." };
+  if (ev.status === "CLOSED") return { ok: true, id };
+  await prisma.sellingEvent.update({
+    where: { id },
+    data: { status: "CLOSED", closedAt: new Date() },
+  });
+  await audit("events.closed", {
+    actorId: user.id,
+    entityType: "SellingEvent",
+    entityId: id,
+  });
+  revalidateEvents(id);
+  return { ok: true, id };
+}
+
+/**
  * Sealing an event closes it, deducts linked inventory, and makes the
  * record permanent — no reopen, no delete. Works on LIVE or on an
  * already-CLOSED (but unsealed) event.

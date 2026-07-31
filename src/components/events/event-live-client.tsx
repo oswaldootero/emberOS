@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  closeEvent,
   deleteEvent,
   getEventSnapshot,
   recordEventSale,
@@ -104,6 +105,17 @@ export function EventLiveClient({
       if (!r.ok) toast.error(r.error);
       else {
         toast.success("Event sealed — the record is permanent.");
+        router.refresh();
+      }
+    });
+  }
+
+  function close() {
+    startTransition(async () => {
+      const r = await closeEvent(eventId);
+      if (!r.ok) toast.error(r.error);
+      else {
+        toast.success("Event closed — seal it when the numbers look right.");
         router.refresh();
       }
     });
@@ -255,11 +267,15 @@ export function EventLiveClient({
                 End this event? {fmtUsd(snap.totalRevenue)} · {snap.totalUnits} units.
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Sealing makes the record permanent
+                Closing stops the selling but stays editable — you can reopen,
+                seal, or delete it later. Sealing makes the record permanent
                 {hasInventoryLinks && " and deducts sold stock from inventory"}.
                 Deleting discards the whole event.
               </p>
               <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" disabled={pending} onClick={close}>
+                  Close event
+                </Button>
                 <Button variant="gold" size="sm" disabled={pending} onClick={seal}>
                   Seal the event
                 </Button>
