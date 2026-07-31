@@ -1343,7 +1343,8 @@ model SellingEvent {
   createdBy           User?     @relation("EventCreator", fields: [createdById], references: [id])
   createdById         String?
   closedAt            DateTime?
-  inventoryDeductedAt DateTime? // set once close-out has deducted linked stock
+  sealedAt            DateTime? // sealed = permanent record: no reopen, no delete
+  inventoryDeductedAt DateTime? // set once sealing has deducted linked stock
 
   items EventItem[]
   sales EventSale[]

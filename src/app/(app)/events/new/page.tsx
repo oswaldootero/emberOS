@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EventForm } from "@/components/events/event-form";
 import { requireUser } from "@/server/auth";
 
-export const metadata = { title: "New Event" };
+export const metadata = { title: "New Sales Event" };
 
 export default async function NewEventPage() {
   await requireUser();
@@ -18,7 +18,7 @@ export default async function NewEventPage() {
       </Button>
       <PageHeader
         eyebrow="Business"
-        title="New event"
+        title="New sales event"
         description="Create the event now — add the sell sheet on the next screen."
       />
       <EventForm />

@@ -104,7 +104,7 @@ export const navigation: NavSection[] = [
         ],
       },
       {
-        label: "Events",
+        label: "Sales Events",
         href: "/events",
         icon: Store,
         description: "Sell at events — tap or voice tally",

@@ -8,9 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  closeEvent,
+  deleteEvent,
   getEventSnapshot,
   recordEventSale,
+  sealEvent,
   undoEventSale,
   voiceEventSale,
   type EventSnapshot,
@@ -97,12 +98,25 @@ export function EventLiveClient({
     }
   }
 
-  function finish(deductInventory: boolean) {
+  function seal() {
     startTransition(async () => {
-      const r = await closeEvent(eventId, { deductInventory });
+      const r = await sealEvent(eventId);
       if (!r.ok) toast.error(r.error);
       else {
-        toast.success("Event closed.");
+        toast.success("Event sealed — the record is permanent.");
+        router.refresh();
+      }
+    });
+  }
+
+  function discard() {
+    if (!confirm("Delete this event and every sale recorded in it? This can't be undone.")) return;
+    startTransition(async () => {
+      const r = await deleteEvent(eventId);
+      if (!r.ok) toast.error(r.error);
+      else {
+        toast.success("Event deleted.");
+        router.push("/events");
         router.refresh();
       }
     });
@@ -232,27 +246,31 @@ export function EventLiveClient({
         </Card>
       )}
 
-      {/* Close event */}
+      {/* End of event: seal it (permanent) or delete it */}
       <div className="pt-2">
         {closing ? (
           <Card className="border-amber-500/30">
             <CardContent className="p-4 space-y-3">
               <div className="text-sm text-ivory">
-                Close this event? {fmtUsd(snap.totalRevenue)} · {snap.totalUnits} units.
+                End this event? {fmtUsd(snap.totalRevenue)} · {snap.totalUnits} units.
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Sealing makes the record permanent
+                {hasInventoryLinks && " and deducts sold stock from inventory"}.
+                Deleting discards the whole event.
+              </p>
               <div className="flex flex-wrap gap-2">
-                {hasInventoryLinks && (
-                  <Button variant="gold" size="sm" disabled={pending} onClick={() => finish(true)}>
-                    Close + deduct inventory
-                  </Button>
-                )}
+                <Button variant="gold" size="sm" disabled={pending} onClick={seal}>
+                  Seal the event
+                </Button>
                 <Button
-                  variant={hasInventoryLinks ? "outline" : "gold"}
+                  variant="outline"
                   size="sm"
                   disabled={pending}
-                  onClick={() => finish(false)}
+                  onClick={discard}
+                  className="text-red-300 border-red-500/30 hover:text-red-200"
                 >
-                  Close only
+                  Delete event
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setClosing(false)}>
                   Keep selling
@@ -267,7 +285,7 @@ export function EventLiveClient({
             className="text-muted-foreground"
             onClick={() => setClosing(true)}
           >
-            <Flag className="h-3.5 w-3.5" /> Close event
+            <Flag className="h-3.5 w-3.5" /> End event
           </Button>
         )}
       </div>

@@ -9,7 +9,7 @@ import { requireUser } from "@/server/auth";
 import { n } from "@/server/sales";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Events" };
+export const metadata = { title: "Sales Events" };
 export const dynamic = "force-dynamic";
 
 const fmtUsd = (v: number) =>
@@ -45,7 +45,7 @@ export default async function EventsPage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Business"
-        title="Events"
+        title="Sales events"
         description="Set up the sell sheet before the event — then tap or talk to tally every sale."
       >
         <Button variant="gold" size="sm" asChild>
@@ -90,6 +90,7 @@ function Section({
     venue: string | null;
     startsAt: Date;
     status: string;
+    sealedAt: Date | null;
     units: number;
     revenue: number;
     _count: { items: number };
@@ -118,6 +119,8 @@ function Section({
                     <Badge variant="gold" className="text-[9px] shrink-0 gap-1">
                       <Radio className="h-2.5 w-2.5 animate-pulse" /> LIVE
                     </Badge>
+                  ) : ev.sealedAt ? (
+                    <Badge variant="success" className="text-[9px] shrink-0">sealed</Badge>
                   ) : (
                     <Badge variant="outline" className="text-[9px] shrink-0">
                       {ev.status === "CLOSED" ? "closed" : "upcoming"}

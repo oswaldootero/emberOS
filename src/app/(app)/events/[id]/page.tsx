@@ -6,14 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SellSheetEditor, type SheetRow } from "@/components/events/sell-sheet-editor";
 import { EventLiveClient } from "@/components/events/event-live-client";
-import { DeleteEventButton, ReopenEventButton } from "@/components/events/event-actions";
+import {
+  DeleteEventButton,
+  ReopenEventButton,
+  SealEventButton,
+} from "@/components/events/event-actions";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { getEventSnapshot } from "@/server/actions/events";
 import { n } from "@/server/sales";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Event" };
+export const metadata = { title: "Sales Event" };
 export const dynamic = "force-dynamic";
 // Voice sales call Whisper + a parse model
 export const maxDuration = 60;
@@ -66,6 +70,8 @@ export default async function EventDetailPage({
               <Badge variant="gold" className="gap-1 text-[10px]">
                 <Radio className="h-2.5 w-2.5 animate-pulse" /> LIVE
               </Badge>
+            ) : ev.sealedAt ? (
+              <Badge variant="success" className="text-[10px]">sealed</Badge>
             ) : (
               <Badge variant="outline" className="text-[10px]">
                 {ev.status.toLowerCase()}
@@ -86,8 +92,13 @@ export default async function EventDetailPage({
           {ev.notes && <p className="text-xs text-ivory/70 mt-2 whitespace-pre-wrap">{ev.notes}</p>}
         </div>
         <div className="flex items-center gap-2">
-          {ev.status === "CLOSED" && <ReopenEventButton eventId={ev.id} />}
-          {ev.sales.length === 0 && <DeleteEventButton eventId={ev.id} />}
+          {ev.status === "CLOSED" && !ev.sealedAt && (
+            <>
+              <SealEventButton eventId={ev.id} />
+              <ReopenEventButton eventId={ev.id} />
+            </>
+          )}
+          {!ev.sealedAt && ev.status !== "LIVE" && <DeleteEventButton eventId={ev.id} />}
         </div>
       </div>
     </div>
@@ -175,11 +186,12 @@ export default async function EventDetailPage({
         <Stat label="Units sold" value={String(totalUnits)} />
         <Stat label="Sales recorded" value={String(ev.sales.length)} />
         <Stat
-          label="Closed"
+          label={ev.sealedAt ? "Sealed" : "Closed"}
           value={
-            ev.closedAt
-              ? ev.closedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-              : "—"
+            (ev.sealedAt ?? ev.closedAt)?.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            }) ?? "—"
           }
         />
       </div>
@@ -190,7 +202,8 @@ export default async function EventDetailPage({
             <CardTitle>Sell-through</CardTitle>
             <CardDescription>
               What you brought vs. what went home with someone.
-              {ev.inventoryDeductedAt && " Inventory was deducted at close."}
+              {ev.inventoryDeductedAt && " Inventory was deducted when the event was sealed."}
+              {!ev.sealedAt && " Not sealed yet — seal it to make the record permanent."}
             </CardDescription>
           </CardHeader>
           <CardContent>

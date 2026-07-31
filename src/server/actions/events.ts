@@ -83,11 +83,11 @@ export async function deleteEvent(id: string): Promise<EventResult> {
   const user = await requireUser();
   const ev = await prisma.sellingEvent.findUnique({
     where: { id },
-    select: { _count: { select: { sales: true } } },
+    select: { sealedAt: true },
   });
   if (!ev) return { ok: false, error: "Event not found." };
-  if (ev._count.sales > 0) {
-    return { ok: false, error: "This event has recorded sales — close it instead of deleting." };
+  if (ev.sealedAt) {
+    return { ok: false, error: "This event is sealed — it's a permanent record." };
   }
   await prisma.sellingEvent.delete({ where: { id } });
   await audit("events.deleted", {
@@ -120,10 +120,12 @@ export async function goLive(id: string): Promise<EventResult> {
   return { ok: true, id };
 }
 
-export async function closeEvent(
-  id: string,
-  opts: { deductInventory: boolean },
-): Promise<EventResult> {
+/**
+ * Sealing an event closes it, deducts linked inventory, and makes the
+ * record permanent — no reopen, no delete. Works on LIVE or on an
+ * already-CLOSED (but unsealed) event.
+ */
+export async function sealEvent(id: string): Promise<EventResult> {
   const user = await requireUser();
   const ev = await prisma.sellingEvent.findUnique({
     where: { id },
@@ -133,15 +135,19 @@ export async function closeEvent(
     },
   });
   if (!ev) return { ok: false, error: "Event not found." };
-  if (ev.status === "CLOSED") return { ok: true, id };
+  if (ev.sealedAt) return { ok: true, id };
 
   await prisma.sellingEvent.update({
     where: { id },
-    data: { status: "CLOSED", closedAt: new Date() },
+    data: {
+      status: "CLOSED",
+      closedAt: ev.closedAt ?? new Date(),
+      sealedAt: new Date(),
+    },
   });
 
-  // Optional stock deduction for inventory-linked lines — once per event.
-  if (opts.deductInventory && !ev.inventoryDeductedAt) {
+  // Stock deduction for inventory-linked lines — once per event.
+  if (!ev.inventoryDeductedAt) {
     const soldByItem = new Map<string, number>();
     for (const s of ev.sales) {
       soldByItem.set(s.itemId, (soldByItem.get(s.itemId) ?? 0) + s.qty);
@@ -180,11 +186,10 @@ export async function closeEvent(
     }
   }
 
-  await audit("events.closed", {
+  await audit("events.sealed", {
     actorId: user.id,
     entityType: "SellingEvent",
     entityId: id,
-    diff: { deductInventory: opts.deductInventory },
   });
   revalidateEvents(id);
   return { ok: true, id };
@@ -192,6 +197,14 @@ export async function closeEvent(
 
 export async function reopenEvent(id: string): Promise<EventResult> {
   const user = await requireUser();
+  const ev = await prisma.sellingEvent.findUnique({
+    where: { id },
+    select: { sealedAt: true },
+  });
+  if (!ev) return { ok: false, error: "Event not found." };
+  if (ev.sealedAt) {
+    return { ok: false, error: "This event is sealed — it can't be reopened." };
+  }
   await prisma.sellingEvent.update({
     where: { id },
     data: { status: "LIVE", closedAt: null },
