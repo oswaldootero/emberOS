@@ -256,6 +256,8 @@ model User {
   sales               Sale[]            @relation("SaleCreator")
   assignedProspects   Prospect[]        @relation("AssignedProspects")
   prospectActivities  ProspectActivity[]
+  createdEvents       SellingEvent[]    @relation("EventCreator")
+  eventSales          EventSale[]       @relation("EventSeller")
 
   @@index([role])
   @@index([supabaseId])
@@ -982,6 +984,7 @@ model InventoryItem {
   adjustments             InventoryAdjustment[]
   orders                  Order[]
   saleItems               SaleItem[]
+  eventItems              EventItem[]
 
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
@@ -1312,4 +1315,84 @@ model ProspectActivity {
 
   @@index([prospectId, createdAt])
   @@index([dueAt])
+}
+
+// -----------------------------
+// Event Mode — sell cigars live at events (tap or voice tally)
+// -----------------------------
+
+enum SellingEventStatus {
+  UPCOMING
+  LIVE
+  CLOSED
+}
+
+enum EventSaleSource {
+  TAP
+  VOICE
+}
+
+model SellingEvent {
+  id       String             @id @default(cuid())
+  name     String
+  venue    String?
+  startsAt DateTime
+  status   SellingEventStatus @default(UPCOMING)
+  notes    String?            @db.Text
+
+  createdBy           User?     @relation("EventCreator", fields: [createdById], references: [id])
+  createdById         String?
+  closedAt            DateTime?
+  inventoryDeductedAt DateTime? // set once close-out has deducted linked stock
+
+  items EventItem[]
+  sales EventSale[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, startsAt])
+}
+
+model EventItem {
+  id      String       @id @default(cuid())
+  event   SellingEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+
+  label      String
+  unitPrice  Decimal @db.Decimal(10, 2)
+  qtyBrought Int     @default(0)
+  sortOrder  Int     @default(0)
+
+  // Optional link — enables price prefill + close-out stock deduction
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  inventoryItemId String?
+
+  sales EventSale[]
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId, sortOrder])
+}
+
+model EventSale {
+  id      String       @id @default(cuid())
+  event   SellingEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  item    EventItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId  String
+
+  qty       Int     @default(1)
+  unitPrice Decimal @db.Decimal(10, 2) // price at the moment of sale
+
+  soldBy   User?   @relation("EventSeller", fields: [soldById], references: [id])
+  soldById String?
+
+  source     EventSaleSource @default(TAP)
+  transcript String?         // voice sales keep the raw words for audit
+
+  soldAt DateTime @default(now())
+
+  @@index([eventId, soldAt])
+  @@index([itemId])
 }

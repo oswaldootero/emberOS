@@ -88,7 +88,7 @@ export function InlineText({
           {value || placeholder || "—"}
         </span>
         {!disabled && (
-          <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 transition" />
+          <Pencil className="h-3 w-3 shrink-0 opacity-40 group-hover:opacity-90 transition" />
         )}
       </button>
     );

@@ -16,6 +16,7 @@ import {
   Workflow,
   Briefcase,
   Receipt,
+  Store,
   Target,
 } from "lucide-react";
 
@@ -101,6 +102,12 @@ export const navigation: NavSection[] = [
             icon: LineChart,
           },
         ],
+      },
+      {
+        label: "Events",
+        href: "/events",
+        icon: Store,
+        description: "Sell at events — tap or voice tally",
       },
       {
         label: "Inventory",
