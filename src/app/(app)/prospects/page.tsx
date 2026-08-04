@@ -202,13 +202,13 @@ export default async function ProspectsPage({
               )}
             </CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
-              <form action="/prospects" className="flex items-center gap-2">
+              <form action="/prospects" className="flex items-center gap-2 flex-wrap">
                 {sp.view && <input type="hidden" name="view" value={sp.view} />}
                 <Input
                   name="q"
                   defaultValue={sp.q ?? ""}
                   placeholder="Search prospects…"
-                  className="h-8 w-48 text-xs"
+                  className="h-8 w-40 sm:w-48 text-xs"
                 />
                 <select
                   name="stage"

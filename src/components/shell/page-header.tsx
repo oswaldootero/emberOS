@@ -33,7 +33,7 @@ export function PageHeader({
           <p className="text-sm text-muted-foreground max-w-2xl">{description}</p>
         )}
       </div>
-      {children && <div className="flex items-center gap-2">{children}</div>}
+      {children && <div className="flex items-center gap-2 flex-wrap">{children}</div>}
     </div>
   );
 }
