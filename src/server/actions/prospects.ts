@@ -643,6 +643,116 @@ export async function importProspectsCsv(
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Screenshot → prospect (vision extraction)
+// ─────────────────────────────────────────────────────────────────
+
+export type ExtractedProspect = {
+  businessName: string;
+  dba: string | null;
+  businessType: string | null;
+  street: string | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  googleRating: number | null;
+  reviewCount: number | null;
+  businessHours: string | null;
+  description: string | null;
+  ownerName: string | null;
+  notes: string | null;
+};
+
+export type ScreenshotExtractionResult =
+  | {
+      ok: true;
+      fields: ExtractedProspect;
+      /** Set when a prospect with the same name+city already exists */
+      existing: { id: string; businessName: string } | null;
+    }
+  | { ok: false; error: string };
+
+export async function extractProspectFromScreenshots(
+  formData: FormData,
+): Promise<ScreenshotExtractionResult> {
+  await requireUser();
+  const { openai, MODELS } = await import("@/lib/openai");
+
+  const files = formData
+    .getAll("images")
+    .filter((f): f is File => f instanceof File && f.size > 0)
+    .slice(0, 3);
+  if (files.length === 0) {
+    return { ok: false, error: "No screenshots received." };
+  }
+  for (const f of files) {
+    if (f.size > 8_000_000) return { ok: false, error: "Image too large (max 8MB)." };
+    if (!f.type.startsWith("image/")) return { ok: false, error: "Only images are supported." };
+  }
+
+  const images = await Promise.all(
+    files.map(async (f) => ({
+      type: "image_url" as const,
+      image_url: {
+        url: `data:${f.type};base64,${Buffer.from(await f.arrayBuffer()).toString("base64")}`,
+      },
+    })),
+  );
+
+  let fields: ExtractedProspect;
+  try {
+    const r = await openai().chat.completions.create({
+      model: MODELS.primary(),
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You extract retail-prospect data for a premium cigar wholesaler from screenshots of business profiles (Instagram, Google Maps/Business, Yelp, Facebook, websites).
+
+Return JSON with exactly these keys (null when not visible — never guess):
+businessName (string, required), dba, businessType (one of "Retail", "Retail + lounge", "Private club", "Membership lounge", or null), street, city, state (2-letter if US), zipCode, phone, email, website (full URL), instagram (full https://instagram.com/... URL — build it from a visible @handle), facebook, googleRating (number 0-5), reviewCount (integer), businessHours (short text), description (their bio/category/what they are, 1-2 sentences), ownerName, notes (anything else useful for a sales rep: follower count, price level, category tags, vibe — or null).
+
+If no business profile is recognizable, return {"businessName": null}.`,
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Extract the business profile from these screenshots:" },
+            ...images,
+          ],
+        },
+      ],
+    });
+    fields = JSON.parse(r.choices[0]?.message?.content ?? "{}");
+  } catch {
+    return { ok: false, error: "Extraction failed — try a clearer screenshot." };
+  }
+
+  if (!fields?.businessName || typeof fields.businessName !== "string") {
+    return {
+      ok: false,
+      error: "Couldn't find a business profile in that screenshot.",
+    };
+  }
+
+  // Dedup: same name (+city when known) already in the pipeline?
+  const existing = await prisma.prospect.findFirst({
+    where: {
+      businessName: { equals: fields.businessName, mode: "insensitive" },
+      ...(fields.city ? { city: { equals: fields.city, mode: "insensitive" } } : {}),
+    },
+    select: { id: true, businessName: true },
+  });
+
+  return { ok: true, fields, existing };
+}
+
+// ─────────────────────────────────────────────────────────────────
 // AI natural-language search
 // ─────────────────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   BarChart3,
   CalendarClock,
+  Camera,
   Columns3,
   List,
   Plus,
@@ -142,6 +143,11 @@ export default async function ProspectsPage({
         <Button variant="outline" size="sm" asChild>
           <Link href="/prospects/import">
             <Upload className="h-4 w-4" /> Import CSV
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/prospects/scan">
+            <Camera className="h-4 w-4" /> From screenshot
           </Link>
         </Button>
         <Button variant="gold" size="sm" asChild>
