@@ -38,7 +38,10 @@ export type ProspectListParams = {
     | "updatedAt"
     | "businessName"
     | "nextFollowupDate"
-    | "createdAt";
+    | "createdAt"
+    | "city"
+    | "stage"
+    | "rep";
   dir?: "asc" | "desc";
   page?: number;
 };
@@ -157,9 +160,11 @@ export async function loadProspectList(params: ProspectListParams) {
     prisma.prospect.findMany({
       where,
       orderBy:
-        sort === "aiScore" || sort === "icpScore" || sort === "lastVisitDate" || sort === "nextFollowupDate"
-          ? [{ [sort]: { sort: dir, nulls: "last" } }, { updatedAt: "desc" }]
-          : { [sort]: dir },
+        sort === "rep"
+          ? [{ assignedTo: { fullName: dir } }, { updatedAt: "desc" }]
+          : ["aiScore", "icpScore", "lastVisitDate", "nextFollowupDate", "city"].includes(sort)
+            ? [{ [sort]: { sort: dir, nulls: "last" } }, { updatedAt: "desc" }]
+            : { [sort]: dir },
       skip: (page - 1) * PROSPECTS_PAGE_SIZE,
       take: PROSPECTS_PAGE_SIZE,
       select: LIST_SELECT,

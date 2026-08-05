@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2, Sparkles, Trash2, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +38,55 @@ const STAGE_OPTIONS = [
 
 const prettyStage = (s: string) =>
   s.toLowerCase().split("_").map((w) => w[0]?.toUpperCase() + w.slice(1)).join(" ");
+
+/** Column header that toggles sort via the ?sort=field:dir URL param. */
+function SortableTh({
+  label,
+  field,
+  defaultDir,
+  className,
+}: {
+  label: string;
+  field: string;
+  defaultDir: "asc" | "desc";
+  className?: string;
+}) {
+  const router = useRouter();
+  const sp = useSearchParams();
+  const [curField, curDir] = (sp.get("sort") ?? "").split(":");
+  const active = curField === field;
+
+  function toggle() {
+    const nextDir = active ? (curDir === "desc" ? "asc" : "desc") : defaultDir;
+    const params = new URLSearchParams(sp.toString());
+    params.set("sort", `${field}:${nextDir}`);
+    params.delete("page");
+    router.push(`/prospects?${params.toString()}`);
+  }
+
+  return (
+    <th className={`text-left font-normal py-2 px-2 ${className ?? ""}`}>
+      <button
+        type="button"
+        onClick={toggle}
+        className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-ivory transition ${
+          active ? "text-ember-200" : ""
+        }`}
+      >
+        {label}
+        {active ? (
+          curDir === "asc" ? (
+            <ArrowUp className="h-2.5 w-2.5" />
+          ) : (
+            <ArrowDown className="h-2.5 w-2.5" />
+          )
+        ) : (
+          <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />
+        )}
+      </button>
+    </th>
+  );
+}
 
 export function ProspectListClient({
   rows,
@@ -171,14 +220,14 @@ export function ProspectListClient({
           <thead>
             <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-white/[0.05]">
               <th className="py-2 px-2 w-8" />
-              <th className="text-left font-normal py-2 px-2">ICP</th>
-              <th className="text-left font-normal py-2 px-2">AI</th>
-              <th className="text-left font-normal py-2 px-2">Business</th>
-              <th className="text-left font-normal py-2 px-2 hidden md:table-cell">Location</th>
-              <th className="text-left font-normal py-2 px-2">Stage</th>
-              <th className="text-left font-normal py-2 px-2 hidden lg:table-cell">Rep</th>
-              <th className="text-left font-normal py-2 px-2 hidden lg:table-cell">Last visit</th>
-              <th className="text-left font-normal py-2 px-2 hidden md:table-cell">Follow-up</th>
+              <SortableTh label="ICP" field="icpScore" defaultDir="desc" />
+              <SortableTh label="AI" field="aiScore" defaultDir="desc" />
+              <SortableTh label="Business" field="businessName" defaultDir="asc" />
+              <SortableTh label="Location" field="city" defaultDir="asc" className="hidden md:table-cell" />
+              <SortableTh label="Stage" field="stage" defaultDir="asc" />
+              <SortableTh label="Rep" field="rep" defaultDir="asc" className="hidden lg:table-cell" />
+              <SortableTh label="Last visit" field="lastVisitDate" defaultDir="desc" className="hidden lg:table-cell" />
+              <SortableTh label="Follow-up" field="nextFollowupDate" defaultDir="asc" className="hidden md:table-cell" />
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.04]">

@@ -64,7 +64,7 @@ export default async function ProspectsPage({
 
   // Sort comes as "field:dir" from the sort dropdown, or as separate
   // sort/dir params from older links — accept both.
-  const SORT_FIELDS = ["aiScore", "icpScore", "lastVisitDate", "updatedAt", "businessName", "nextFollowupDate", "createdAt"];
+  const SORT_FIELDS = ["aiScore", "icpScore", "lastVisitDate", "updatedAt", "businessName", "nextFollowupDate", "createdAt", "city", "stage", "rep"];
   const [rawSort, rawDir] = (sp.sort ?? "").split(":");
   const sortField = SORT_FIELDS.includes(rawSort ?? "")
     ? (rawSort as ProspectListParams["sort"])
@@ -112,6 +112,7 @@ export default async function ProspectsPage({
   const activeFilters = [
     sp.stage && `stage: ${sp.stage.toLowerCase()}`,
     sp.state && `state: ${sp.state}`,
+    sp.city && `city: ${sp.city}`,
     sp.minScore && `AI score ≥ ${sp.minScore}`,
     sp.minIcp && `ICP ≥ ${sp.minIcp}`,
     sp.verdict && `verdict: ${sp.verdict.toLowerCase()}`,
@@ -209,6 +210,19 @@ export default async function ProspectsPage({
                   defaultValue={sp.q ?? ""}
                   placeholder="Search prospects…"
                   className="h-8 w-40 sm:w-48 text-xs"
+                />
+                <Input
+                  name="city"
+                  defaultValue={sp.city ?? ""}
+                  placeholder="City"
+                  className="h-8 w-28 text-xs"
+                />
+                <Input
+                  name="state"
+                  defaultValue={sp.state ?? ""}
+                  placeholder="ST"
+                  maxLength={20}
+                  className="h-8 w-14 text-xs uppercase"
                 />
                 <select
                   name="stage"
