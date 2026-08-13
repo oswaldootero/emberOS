@@ -256,6 +256,9 @@ model User {
   sales               Sale[]            @relation("SaleCreator")
   assignedProspects   Prospect[]        @relation("AssignedProspects")
   prospectActivities  ProspectActivity[]
+  assignedInfluencers Influencer[]      @relation("AssignedInfluencers")
+  influencerShipments InfluencerShipment[] @relation("InfluencerShipmentCreator")
+  influencerPosts     InfluencerPost[]  @relation("InfluencerPostCreator")
   createdEvents       SellingEvent[]    @relation("EventCreator")
   eventSales          EventSale[]       @relation("EventSeller")
 
@@ -1315,6 +1318,126 @@ model ProspectActivity {
 
   @@index([prospectId, createdAt])
   @@index([dueAt])
+}
+
+// -----------------------------
+// Influencer Relationships — cigar seeding + post tracking
+// -----------------------------
+// Influencers move from prospect to active partner. Each cigar shipment
+// and each resulting post is logged so the profile shows what was sent
+// vs. what content came back.
+
+enum InfluencerStage {
+  PROSPECT
+  CONTACTED
+  IN_CONVERSATION
+  AGREED
+  CIGARS_SENT
+  ACTIVE_PARTNER
+  INACTIVE
+  DECLINED
+}
+
+enum InfluencerPostType {
+  POST
+  STORY
+  REEL
+  VIDEO
+  LIVE
+  UNBOXING
+  REVIEW
+  GIVEAWAY
+  MENTION
+  OTHER
+}
+
+model Influencer {
+  id             String   @id @default(cuid())
+  name           String            // display name from the profile
+  handle         String?           // without the @
+  platform       String   @default("Instagram")
+  profileUrl     String?
+
+  // Audience snapshot (from screenshot or manual entry)
+  followerCount  Int?
+  followingCount Int?
+  postCount      Int?              // lifetime posts shown on their profile
+  niche          String?           // "cigar lifestyle", "whiskey", "golf"…
+  bio            String?  @db.Text
+  location       String?
+
+  // Contact
+  email          String?
+  phone          String?
+  otherSocials   String?
+
+  // Relationship
+  stage            InfluencerStage @default(PROSPECT)
+  assignedTo       User?           @relation("AssignedInfluencers", fields: [assignedToId], references: [id])
+  assignedToId     String?
+  lastContactDate  DateTime?
+  nextFollowupDate DateTime?
+  agreementTerms   String?         @db.Text  // e.g. "2 reels + 3 stories per shipment"
+
+  tags           String[] @default([])
+  notes          String?  @db.Text
+  archivedAt     DateTime?
+
+  shipments      InfluencerShipment[]
+  posts          InfluencerPost[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([stage])
+  @@index([handle])
+  @@index([name])
+  @@index([assignedToId])
+  @@index([nextFollowupDate])
+  @@index([archivedAt])
+}
+
+model InfluencerShipment {
+  id             String     @id @default(cuid())
+  influencer     Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  influencerId   String
+
+  sentAt         DateTime   @default(now())
+  cigarCount     Int
+  contents       String?    @db.Text  // which cigars / SKUs went in the box
+  costUsd        Decimal?   @db.Decimal(10, 2)
+  carrier        String?
+  trackingNumber String?
+  deliveredAt    DateTime?
+  notes          String?    @db.Text
+
+  createdBy      User?      @relation("InfluencerShipmentCreator", fields: [createdById], references: [id])
+  createdById    String?
+  createdAt      DateTime   @default(now())
+
+  @@index([influencerId, sentAt])
+}
+
+model InfluencerPost {
+  id           String             @id @default(cuid())
+  influencer   Influencer         @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  influencerId String
+
+  postedAt     DateTime           @default(now())
+  type         InfluencerPostType @default(POST)
+  url          String?
+  caption      String?            @db.Text
+  likes        Int?
+  comments     Int?
+  views        Int?
+  notes        String?            @db.Text
+
+  createdBy    User?              @relation("InfluencerPostCreator", fields: [createdById], references: [id])
+  createdById  String?
+  createdAt    DateTime           @default(now())
+
+  @@index([influencerId, postedAt])
+  @@index([type])
 }
 
 // -----------------------------

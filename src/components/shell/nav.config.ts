@@ -15,6 +15,7 @@ import {
   UserCog,
   Workflow,
   Briefcase,
+  Megaphone,
   Receipt,
   Store,
   Target,
@@ -102,6 +103,12 @@ export const navigation: NavSection[] = [
             icon: LineChart,
           },
         ],
+      },
+      {
+        label: "Influencers",
+        href: "/influencers",
+        icon: Megaphone,
+        description: "Seed cigars, track posts",
       },
       {
         label: "Sales Events",
