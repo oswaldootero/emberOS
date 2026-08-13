@@ -247,7 +247,7 @@ export default async function InfluencerDetailPage({
                 label="Next follow-up"
                 value={
                   inf.nextFollowupDate
-                    ? inf.nextFollowupDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                    ? inf.nextFollowupDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
                     : "—"
                 }
               />

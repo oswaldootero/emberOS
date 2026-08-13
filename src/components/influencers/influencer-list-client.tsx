@@ -244,12 +244,12 @@ export function InfluencerListClient({
                 </td>
                 <td className="py-2.5 px-2 text-xs text-muted-foreground hidden lg:table-cell">
                   {inf.lastPostAt
-                    ? new Date(inf.lastPostAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                    ? new Date(inf.lastPostAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
                     : "—"}
                 </td>
                 <td className="py-2.5 px-2 text-xs text-muted-foreground hidden md:table-cell">
                   {inf.nextFollowupDate
-                    ? new Date(inf.nextFollowupDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                    ? new Date(inf.nextFollowupDate).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
                     : "—"}
                 </td>
               </tr>

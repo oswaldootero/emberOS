@@ -290,6 +290,7 @@ The Prisma `User.role` enum supports four roles:
 ## ✦ Documentation
 
 - [Analytics CSV Import Guide](docs/ANALYTICS-IMPORT.md) — how to export from GA4, Search Console, Meta Business Suite, and YouTube, then feed it to EmberOS for AI-driven insights
+- [UI/UX Guidelines](docs/UI-GUIDELINES.md) — theming, layout, mobile, date handling, and interaction conventions every new module must follow
 
 ---
 

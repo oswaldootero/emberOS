@@ -138,10 +138,10 @@ export function InfluencerForm({
             </Select>
           </div>
           <F label="Profile URL" value={v.profileUrl} onChange={(x) => set({ profileUrl: x })} placeholder="https://instagram.com/…" />
-          <F label="Followers" value={v.followerCount} onChange={(x) => set({ followerCount: x })} placeholder="12400" />
+          <F label="Followers" value={v.followerCount} onChange={(x) => set({ followerCount: x })} placeholder="12400" numeric />
           <div className="grid grid-cols-2 gap-3">
-            <F label="Following" value={v.followingCount} onChange={(x) => set({ followingCount: x })} />
-            <F label="Posts" value={v.postCount} onChange={(x) => set({ postCount: x })} />
+            <F label="Following" value={v.followingCount} onChange={(x) => set({ followingCount: x })} numeric />
+            <F label="Posts" value={v.postCount} onChange={(x) => set({ postCount: x })} numeric />
           </div>
           <F label="Niche" value={v.niche} onChange={(x) => set({ niche: x })} placeholder="cigar lifestyle, whiskey…" />
           <F label="Location" value={v.location} onChange={(x) => set({ location: x })} />
@@ -198,12 +198,14 @@ function F({
   onChange,
   placeholder,
   autoFocus,
+  numeric,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
+  numeric?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -213,6 +215,7 @@ function F({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        inputMode={numeric ? "numeric" : undefined}
       />
     </div>
   );

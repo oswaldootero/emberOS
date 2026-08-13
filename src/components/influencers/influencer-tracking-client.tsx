@@ -22,13 +22,16 @@ import {
   deleteInfluencerShipment,
 } from "@/server/actions/influencers";
 
+// Date-only values are stored as UTC midnight — format in UTC so the
+// day doesn't shift backwards in US timezones.
 const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 const fmtUsd = (v: number) =>
   Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(v);
 
-const today = () => new Date().toISOString().slice(0, 10);
+// Local calendar date (toISOString would roll to tomorrow in the evening)
+const today = () => new Date().toLocaleDateString("en-CA");
 
 // ─────────────────────────────────────────────────────────────────
 // Shipments
@@ -182,7 +185,7 @@ export function ShipmentTracker({
       ) : (
         <ul className="divide-y divide-white/[0.04]">
           {shipments.map((s) => (
-            <li key={s.id} className="py-2.5 flex items-start gap-3 group">
+            <li key={s.id} className="py-2.5 flex items-start gap-3">
               <Package className="h-3.5 w-3.5 text-ember-300/80 mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="text-xs text-ivory">
@@ -200,7 +203,7 @@ export function ShipmentTracker({
                 type="button"
                 onClick={() => remove(s.id)}
                 aria-label="Delete shipment"
-                className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-red-300 pt-0.5"
+                className="text-muted-foreground/60 hover:text-red-300 transition p-1.5 -m-1"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -368,7 +371,7 @@ export function PostTracker({
       ) : (
         <ul className="divide-y divide-white/[0.04]">
           {posts.map((p) => (
-            <li key={p.id} className="py-2.5 flex items-start gap-3 group">
+            <li key={p.id} className="py-2.5 flex items-start gap-3">
               <span className="rounded-full border border-ember-500/25 bg-ember-500/[0.06] px-2 py-0.5 text-[10px] text-ember-200 shrink-0 mt-0.5">
                 {prettyType(p.type)}
               </span>
@@ -403,7 +406,7 @@ export function PostTracker({
                 type="button"
                 onClick={() => remove(p.id)}
                 aria-label="Delete post"
-                className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-red-300 pt-0.5"
+                className="text-muted-foreground/60 hover:text-red-300 transition p-1.5 -m-1"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
