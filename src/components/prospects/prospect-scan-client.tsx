@@ -97,8 +97,14 @@ export function ProspectScanClient() {
         ownerName: f.ownerName,
         notes: f.notes ? `From screenshot: ${f.notes}` : null,
         tags: ["screenshot"],
+        // The duplicate banner was already shown — creating again is deliberate
+        allowDuplicate: Boolean(result.existing),
       });
       if (!r.ok) {
+        if (r.duplicate) {
+          const dup = r.duplicate;
+          setResult((prev) => (prev ? { ...prev, existing: dup } : prev));
+        }
         toast.error(r.error);
         return;
       }

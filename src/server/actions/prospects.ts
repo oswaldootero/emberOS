@@ -21,7 +21,12 @@ import {
 
 export type ProspectResult =
   | { ok: true; id: string }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /** Set when creation was blocked because this prospect already exists */
+      duplicate?: { id: string; businessName: string; city: string | null };
+    };
 
 const STAGES = [
   "LEAD",
@@ -71,6 +76,8 @@ const ProspectSchema = z.object({
   nextFollowupDate: z.string().optional().nullable(),
   tags: z.array(z.string()).optional().default([]),
   notes: z.string().max(5000).optional().nullable(),
+  /** Skip the duplicate guard — set after the user was shown the existing record */
+  allowDuplicate: z.boolean().optional(),
 });
 
 function firstError(e: z.ZodError): string {
@@ -97,7 +104,22 @@ export async function createProspect(input: unknown): Promise<ProspectResult> {
   const user = await requireUser();
   const parsed = ProspectSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
-  const d = nullifyEmpty(parsed.data);
+  const { allowDuplicate, ...rest } = parsed.data;
+  const d = nullifyEmpty(rest);
+
+  if (!allowDuplicate) {
+    const dupe = await prisma.prospect.findFirst({
+      where: { businessName: { equals: d.businessName.trim(), mode: "insensitive" } },
+      select: { id: true, businessName: true, city: true },
+    });
+    if (dupe) {
+      return {
+        ok: false,
+        error: `"${dupe.businessName}"${dupe.city ? ` (${dupe.city})` : ""} is already in the pipeline.`,
+        duplicate: dupe,
+      };
+    }
+  }
 
   const p = await prisma.prospect.create({
     data: {
@@ -122,7 +144,8 @@ export async function updateProspect(
   const user = await requireUser();
   const parsed = ProspectSchema.partial().safeParse(input);
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
-  const d = nullifyEmpty(parsed.data);
+  const { allowDuplicate: _ignored, ...rest } = parsed.data;
+  const d = nullifyEmpty(rest);
 
   await prisma.prospect.update({
     where: { id },
@@ -552,12 +575,12 @@ export async function importProspectsCsv(
     };
   }
 
+  // Dedup by name only — keying on name|city let the same business slip
+  // through twice when one row was missing the city.
   const existing = await prisma.prospect.findMany({
-    select: { businessName: true, city: true },
+    select: { businessName: true },
   });
-  const seen = new Set(
-    existing.map((p) => `${p.businessName.toLowerCase()}|${p.city?.toLowerCase() ?? ""}`),
-  );
+  const seen = new Set(existing.map((p) => p.businessName.toLowerCase().trim()));
   // Also dedup against customers by name
   const customerNames = new Set(
     (await prisma.customer.findMany({ select: { businessName: true } })).map(
@@ -581,7 +604,7 @@ export async function importProspectsCsv(
     const businessName = cell(row, "businessName");
     if (!businessName) continue;
     const city = cell(row, "city") ?? null;
-    const key = `${businessName.toLowerCase()}|${city?.toLowerCase() ?? ""}`;
+    const key = businessName.toLowerCase().trim();
 
     if (seen.has(key)) {
       preview.push({ line, businessName, city, outcome: "duplicate prospect" });
@@ -740,11 +763,12 @@ If no business profile is recognizable, return {"businessName": null}.`,
     };
   }
 
-  // Dedup: same name (+city when known) already in the pipeline?
+  // Dedup: same name already in the pipeline? (Name-only on purpose —
+  // matching on city too let same-name records with a missing city slip
+  // through as duplicates.)
   const existing = await prisma.prospect.findFirst({
     where: {
-      businessName: { equals: fields.businessName, mode: "insensitive" },
-      ...(fields.city ? { city: { equals: fields.city, mode: "insensitive" } } : {}),
+      businessName: { equals: fields.businessName.trim(), mode: "insensitive" },
     },
     select: { id: true, businessName: true },
   });

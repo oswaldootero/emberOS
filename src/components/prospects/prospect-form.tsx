@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -85,12 +86,16 @@ export function ProspectForm({
   });
   const [tagsInput, setTagsInput] = useState((initial?.tags ?? []).join(", "));
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [dup, setDup] = useState<{
+    id: string;
+    businessName: string;
+    city: string | null;
+  } | null>(null);
 
   const set = (patch: Partial<ProspectFormValues>) =>
     setV((prev) => ({ ...prev, ...patch }));
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
+  function doSubmit(allowDuplicate: boolean) {
     if (!v.businessName.trim()) {
       toast.error("Business name is required.");
       return;
@@ -100,6 +105,7 @@ export function ProspectForm({
       tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       notes: notes || null,
       nextFollowupDate: v.nextFollowupDate || null,
+      allowDuplicate,
     };
     delete (payload as Record<string, unknown>).id;
 
@@ -109,13 +115,20 @@ export function ProspectForm({
           ? await createProspect(payload)
           : await updateProspect(initial!.id!, payload);
       if (!r.ok) {
-        toast.error(r.error);
+        if (r.duplicate) setDup(r.duplicate);
+        else toast.error(r.error);
         return;
       }
+      setDup(null);
       toast.success(mode === "create" ? "Prospect added — run AI analysis from its profile." : "Updated.");
       router.push(`/prospects/${r.id}`);
       router.refresh();
     });
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    doSubmit(false);
   }
 
   return (
@@ -186,6 +199,35 @@ export function ProspectForm({
           <Textarea value={notes ?? ""} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="How you found them, first impressions…" />
         </CardContent>
       </Card>
+
+      {dup && (
+        <div className="rounded-md border border-amber-500/25 bg-amber-500/[0.06] p-3 text-xs text-ivory flex items-center justify-between gap-3 flex-wrap">
+          <span>
+            <Link
+              href={`/prospects/${dup.id}`}
+              className="text-ember-200 underline underline-offset-2"
+            >
+              {dup.businessName}
+            </Link>
+            {dup.city ? ` (${dup.city})` : ""} is already in the pipeline.
+          </span>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link href={`/prospects/${dup.id}`}>Open existing</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={pending}
+              onClick={() => doSubmit(true)}
+              className="text-muted-foreground"
+            >
+              Create duplicate anyway
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
