@@ -1154,6 +1154,7 @@ model Prospect {
   customerId       String?         @unique
 
   activities       ProspectActivity[]
+  mentions         SocialMention[]
 
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
@@ -1253,6 +1254,7 @@ model Influencer {
 
   shipments      InfluencerShipment[]
   posts          InfluencerPost[]
+  mentions       SocialMention[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -1387,4 +1389,56 @@ model EventSale {
 
   @@index([eventId, soldAt])
   @@index([itemId])
+}
+
+// -----------------------------
+// Social scouting — Instagram mentions inbox
+// -----------------------------
+// Every time someone tags @heavensleaf in a photo, a caption, or a
+// comment, it lands here via the Meta webhook (mentions) or the
+// periodic /tags poll. Reviewing a mention can link it to an existing
+// influencer/prospect, create one, or log it as an InfluencerPost.
+
+enum SocialMentionSource {
+  TAG              // tagged in the photo/video
+  CAPTION_MENTION  // @mentioned in a caption
+  COMMENT_MENTION  // @mentioned in a comment
+}
+
+enum SocialMentionStatus {
+  NEW
+  REVIEWED
+  DISMISSED
+}
+
+model SocialMention {
+  id           String              @id @default(cuid())
+  platform     String              @default("Instagram")
+  source       SocialMentionSource
+  // "<source>:<media or comment id>" — stable dedup key across polls and webhooks
+  externalId   String              @unique
+  mediaId      String?
+  username     String
+  caption      String?             @db.Text
+  permalink    String?
+  mediaType    String?             // IMAGE | VIDEO | CAROUSEL_ALBUM | COMMENT
+  likeCount    Int?
+  commentCount Int?
+  postedAt     DateTime
+  status       SocialMentionStatus @default(NEW)
+
+  influencer   Influencer?         @relation(fields: [influencerId], references: [id], onDelete: SetNull)
+  influencerId String?
+  prospect     Prospect?           @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  prospectId   String?
+  loggedPostId String?             // InfluencerPost.id once logged
+
+  raw          Json?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([status, postedAt])
+  @@index([username])
+  @@index([influencerId])
+  @@index([prospectId])
 }

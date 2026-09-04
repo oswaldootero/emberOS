@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InfluencerStageBadge, fmtFollowers } from "@/components/influencers/stage-badge";
 import { InfluencerProfileActions } from "@/components/influencers/influencer-profile-actions";
+import { RefreshFromInstagram } from "@/components/influencers/refresh-from-instagram";
 import {
   PostTracker,
   ShipmentTracker,
@@ -24,6 +25,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { n } from "@/server/sales";
+import { instagramConfigured } from "@/server/integrations/meta";
 
 export const metadata = { title: "Influencer" };
 export const dynamic = "force-dynamic";
@@ -143,12 +145,17 @@ export default async function InfluencerDetailPage({
             </div>
           </div>
         </div>
-        <InfluencerProfileActions
-          influencerId={inf.id}
-          name={inf.name}
-          stage={inf.stage}
-          isAdmin={user.role === "ADMIN"}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          {instagramConfigured() && inf.handle && inf.platform === "Instagram" && (
+            <RefreshFromInstagram influencerId={inf.id} />
+          )}
+          <InfluencerProfileActions
+            influencerId={inf.id}
+            name={inf.name}
+            stage={inf.stage}
+            isAdmin={user.role === "ADMIN"}
+          />
+        </div>
       </div>
 
       {/* Seeding scoreboard */}

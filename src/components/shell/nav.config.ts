@@ -19,6 +19,9 @@ import {
   Receipt,
   Store,
   Target,
+  Radar,
+  AtSign,
+  ScanSearch,
 } from "lucide-react";
 
 export type NavChild = {
@@ -109,6 +112,24 @@ export const navigation: NavSection[] = [
         href: "/influencers",
         icon: Megaphone,
         description: "Seed cigars, track posts",
+      },
+      {
+        label: "Social Scouting",
+        href: "/social/mentions",
+        icon: Radar,
+        description: "Who's tagging you, look up any handle",
+        children: [
+          {
+            label: "Mentions inbox",
+            href: "/social/mentions",
+            icon: AtSign,
+          },
+          {
+            label: "Handle lookup",
+            href: "/social/lookup",
+            icon: ScanSearch,
+          },
+        ],
       },
       {
         label: "Sales Events",

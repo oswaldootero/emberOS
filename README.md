@@ -23,6 +23,7 @@ A cinematic AI-powered media operating system for **Heaven's Leaf** — a premiu
 | **Brand Voice** | Persistent tone, vocabulary, forbidden words, theological guardrails — loaded into every AI call. |
 | **Workflows** | Visual automation pipelines (`blog published → cascade everywhere`). |
 | **Asset Library** | Supabase Storage-backed media library. |
+| **Social Scouting** | Instagram mentions inbox (who's tagging you) + handle lookup with engagement rate; one click to influencer or prospect. See `docs/SOCIAL-SCOUTING.md`. |
 
 ---
 
@@ -305,6 +306,7 @@ The Prisma `User.role` enum supports four roles:
 
 - [Analytics CSV Import Guide](docs/ANALYTICS-IMPORT.md) — how to export from GA4, Search Console, Meta Business Suite, and YouTube, then feed it to EmberOS for AI-driven insights
 - [UI/UX Guidelines](docs/UI-GUIDELINES.md) — theming, layout, mobile, date handling, and interaction conventions every new module must follow
+- [Social Scouting](docs/SOCIAL-SCOUTING.md) — Meta app setup walkthrough for the Instagram mentions inbox, handle lookup, and webhook
 
 ---
 

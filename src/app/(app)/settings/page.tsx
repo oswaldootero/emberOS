@@ -17,6 +17,10 @@ const INTEGRATIONS = [
   { name: "OpenAI", env: ["OPENAI_API_KEY"] },
   { name: "Telegram Bot", env: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET"] },
   { name: "WordPress", env: ["WORDPRESS_URL", "WORDPRESS_APP_PASSWORD"] },
+  {
+    name: "Meta (Instagram scouting)",
+    env: ["META_ACCESS_TOKEN", "META_INSTAGRAM_BUSINESS_ID", "META_APP_SECRET", "META_WEBHOOK_VERIFY_TOKEN"],
+  },
 ];
 
 function isSet(key: string) {
