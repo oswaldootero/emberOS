@@ -164,11 +164,13 @@ Schema changes go through Prisma Migrate — never `prisma db push` against prod
 - `npm run db:deploy` — applies pending migrations (this is what the Vercel build runs).
 - `npm run db:status` — shows which migrations the database has applied.
 
+All `db:*` scripts load `.env.local` for you (Prisma's CLI only reads `.env` on its own), so run them from the project folder in a terminal.
+
 **One-time baseline for a database that predates the migrations folder:** the first migration (`20260904000000_baseline`) reproduces the schema as it existed before migrations were introduced. Mark it as already applied, then deploy the rest:
 
 ```bash
-npx prisma migrate resolve --applied 20260904000000_baseline
-npx prisma migrate deploy
+npm run db:baseline
+npm run db:deploy
 ```
 
 ### Telegram webhook
@@ -294,9 +296,10 @@ The Prisma `User.role` enum supports four roles:
 | `npm run lint` | ESLint (flat config, Next + TypeScript rules) |
 | `npm run typecheck` | TypeScript no-emit check |
 | `npm run test` | Vitest unit tests (`src/**/*.test.ts`) |
-| `npm run db:migrate` | Create + apply a migration locally |
-| `npm run db:deploy` | Apply pending migrations (used in the build) |
 | `npm run db:status` | Show applied / pending migrations |
+| `npm run db:baseline` | One-time: mark the baseline migration as already applied |
+| `npm run db:deploy` | Apply pending migrations (Vercel build runs the same thing) |
+| `npm run db:migrate` | Create + apply a migration locally |
 | `npm run db:seed` | Seed brand voice, templates, sample workflow |
 | `npm run db:studio` | Open Prisma Studio |
 
