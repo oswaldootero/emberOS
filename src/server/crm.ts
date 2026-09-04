@@ -1,5 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { predictReorders, type ReorderPrediction } from "@/server/crm/predict-reorders";
+
+const REVENUE_STATUSES = ["SENT", "PAID", "PARTIAL", "OVERDUE"] as const;
+const OUTSTANDING_STATUSES = ["SENT", "PARTIAL", "OVERDUE"] as const;
 
 export type CRMSnapshot = {
   totals: {
@@ -9,13 +13,12 @@ export type CRMSnapshot = {
     inactive: number;
   };
   byCustomerType: { type: string; count: number }[];
-  reorderPipeline: {
-    id: string;
-    customerName: string;
-    product: string;
-    dueDate: string;
-    daysUntil: number;
-  }[];
+  /**
+   * Customers predicted to reorder soon, derived from their invoice
+   * cadence: last invoice date + average gap between invoices. Needs at
+   * least two invoices per customer.
+   */
+  reorderPipeline: ReorderPrediction[];
   followupsDue: {
     id: string;
     name: string;
@@ -23,8 +26,8 @@ export type CRMSnapshot = {
     nextFollowup: string;
     daysUntil: number;
   }[];
-  brokerCommissionsOwed: number;
-  brokerCommissionsThisMonth: number;
+  outstandingBalance: number;
+  revenueThisMonth: number;
 };
 
 function num(v: unknown): number {
@@ -42,10 +45,10 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
     customers,
     customersByType,
     customersByStatus,
-    upcomingReorders,
+    revenueSales,
     followups,
-    totalBrokerOwedAgg,
-    monthBrokerAgg,
+    outstandingAgg,
+    monthAgg,
   ] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.groupBy({
@@ -56,13 +59,17 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
       by: ["status"],
       _count: { _all: true },
     }),
-    prisma.order.findMany({
+    prisma.sale.findMany({
       where: {
-        reorderDueDate: { gte: now },
+        status: { in: [...REVENUE_STATUSES] },
+        customer: { archivedAt: null },
       },
-      orderBy: { reorderDueDate: "asc" },
-      take: 8,
-      include: { customer: { select: { businessName: true } } },
+      select: {
+        customerId: true,
+        invoiceDate: true,
+        grandTotal: true,
+        customer: { select: { businessName: true } },
+      },
     }),
     prisma.customer.findMany({
       where: {
@@ -78,15 +85,15 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
         nextFollowupDate: true,
       },
     }),
-    prisma.order.aggregate({
-      _sum: { brokerCommission: true },
-      where: { paymentStatus: "PAID" },
+    prisma.sale.aggregate({
+      _sum: { grandTotal: true, amountPaid: true },
+      where: { status: { in: [...OUTSTANDING_STATUSES] } },
     }),
-    prisma.order.aggregate({
-      _sum: { brokerCommission: true },
+    prisma.sale.aggregate({
+      _sum: { grandTotal: true },
       where: {
-        paymentStatus: "PAID",
-        orderDate: { gte: startOfMonth },
+        status: { in: [...REVENUE_STATUSES] },
+        invoiceDate: { gte: startOfMonth },
       },
     }),
   ]);
@@ -111,17 +118,15 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
       type: r.customerType,
       count: r._count._all,
     })),
-    reorderPipeline: upcomingReorders.map((o) => {
-      const due = o.reorderDueDate ?? new Date();
-      const days = Math.ceil((due.getTime() - now.getTime()) / 86400000);
-      return {
-        id: o.id,
-        customerName: o.customer?.businessName ?? "—",
-        product: o.product,
-        dueDate: due.toISOString(),
-        daysUntil: days,
-      };
-    }),
+    reorderPipeline: predictReorders(
+      revenueSales.map((s) => ({
+        customerId: s.customerId,
+        customerName: s.customer.businessName,
+        invoiceDate: s.invoiceDate,
+        grandTotal: num(s.grandTotal),
+      })),
+      now,
+    ),
     followupsDue: followups.map((c) => {
       const date = c.nextFollowupDate!;
       const days = Math.ceil((date.getTime() - now.getTime()) / 86400000);
@@ -133,7 +138,10 @@ export async function loadCRMSnapshot(): Promise<CRMSnapshot> {
         daysUntil: days,
       };
     }),
-    brokerCommissionsOwed: num(totalBrokerOwedAgg._sum.brokerCommission),
-    brokerCommissionsThisMonth: num(monthBrokerAgg._sum.brokerCommission),
+    outstandingBalance: Math.max(
+      0,
+      num(outstandingAgg._sum.grandTotal) - num(outstandingAgg._sum.amountPaid),
+    ),
+    revenueThisMonth: num(monthAgg._sum.grandTotal),
   };
 }

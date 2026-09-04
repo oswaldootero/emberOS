@@ -26,14 +26,6 @@ const fmtUsd = (v: number) =>
     maximumFractionDigits: 2,
   }).format(v);
 
-const fmtDate = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "—";
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: "", label: "All" },

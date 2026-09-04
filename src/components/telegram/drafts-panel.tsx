@@ -9,7 +9,6 @@ import {
   Loader2,
   RefreshCw,
   Send,
-  Sparkles,
   Trash2,
   Wand2,
   XCircle,

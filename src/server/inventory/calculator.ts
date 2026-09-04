@@ -117,3 +117,65 @@ export function velocity(
     recommendReorder: projectedAtWindowEnd <= reorderThreshold,
   };
 }
+
+export type SoldLine = {
+  inventoryItemId: string | null;
+  quantity: number;
+  lineTotal: number;
+  customerId: string;
+  customerName: string;
+  customerType: string;
+};
+
+/**
+ * Pure aggregation over invoice line items for the snapshot cards.
+ * Exported for tests; `loadInventorySnapshot` feeds it live rows.
+ */
+export function aggregateSoldLines(lines: SoldLine[]) {
+  const bySku = new Map<string, { packagesSold: number; revenue: number }>();
+  const byCustomer = new Map<
+    string,
+    { customerId: string; customerName: string; packages: number; revenue: number }
+  >();
+  const byChannel = new Map<
+    string,
+    { channel: string; packages: number; revenue: number }
+  >();
+
+  for (const l of lines) {
+    if (l.inventoryItemId) {
+      const cur = bySku.get(l.inventoryItemId) ?? { packagesSold: 0, revenue: 0 };
+      cur.packagesSold += l.quantity;
+      cur.revenue += l.lineTotal;
+      bySku.set(l.inventoryItemId, cur);
+    }
+    const c = byCustomer.get(l.customerId) ?? {
+      customerId: l.customerId,
+      customerName: l.customerName,
+      packages: 0,
+      revenue: 0,
+    };
+    c.packages += l.quantity;
+    c.revenue += l.lineTotal;
+    byCustomer.set(l.customerId, c);
+
+    const ch = byChannel.get(l.customerType) ?? {
+      channel: l.customerType,
+      packages: 0,
+      revenue: 0,
+    };
+    ch.packages += l.quantity;
+    ch.revenue += l.lineTotal;
+    byChannel.set(l.customerType, ch);
+  }
+
+  return {
+    bySku,
+    salesByCustomer: Array.from(byCustomer.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 6),
+    salesByChannel: Array.from(byChannel.values()).sort(
+      (a, b) => b.revenue - a.revenue,
+    ),
+  };
+}

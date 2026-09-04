@@ -3,7 +3,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   Facebook,
   Globe,
   Instagram,

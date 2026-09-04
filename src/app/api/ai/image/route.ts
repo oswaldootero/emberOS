@@ -4,7 +4,6 @@ import { checkRate } from "@/lib/rate-limit";
 import { getSessionUser } from "@/lib/supabase/server";
 import { audit } from "@/server/audit";
 import { prisma } from "@/lib/prisma";
-import { estimateCostUsd } from "@/lib/openai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

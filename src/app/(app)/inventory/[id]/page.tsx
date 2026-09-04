@@ -46,7 +46,7 @@ export default async function InventoryItemPage({
         orderBy: { createdAt: "desc" },
         take: 50,
         include: {
-          order: { select: { id: true, customer: { select: { businessName: true } } } },
+          sale: { select: { id: true, customer: { select: { businessName: true } } } },
           createdBy: { select: { fullName: true, email: true } },
         },
       },
@@ -156,8 +156,8 @@ export default async function InventoryItemPage({
             <CardHeader>
               <CardTitle>Adjustments & history</CardTitle>
               <CardDescription>
-                Every change to stock is logged. Manual adjustments below; sales
-                from CRM orders auto-create entries.
+                Every change to stock is logged. Manual adjustments below;
+                invoice-linked entries show the customer.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -173,8 +173,8 @@ export default async function InventoryItemPage({
                   createdBy: a.createdBy
                     ? a.createdBy.fullName ?? a.createdBy.email
                     : null,
-                  customerName: a.order?.customer?.businessName ?? null,
-                  orderId: a.orderId,
+                  customerName: a.sale?.customer?.businessName ?? null,
+                  saleId: a.saleId,
                 }))}
               />
             </CardContent>

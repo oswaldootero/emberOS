@@ -49,7 +49,7 @@ export function CustomerListClient({
       !confirm(
         `${label} ${ids.length} customer${ids.length === 1 ? "" : "s"}?${
           kind === "delete"
-            ? " This also deletes their invoices and orders. This cannot be undone."
+            ? " This also deletes their invoices. This cannot be undone."
             : " They can be restored from the archived view."
         }`,
       )

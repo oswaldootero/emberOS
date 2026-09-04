@@ -53,11 +53,6 @@ const schema = z.object({
 
   CRON_SECRET: optStr,
   INTERNAL_API_TOKEN: optStr,
-
-  // Helcim — card-capture + tokenized vault for the /pay public flow.
-  HELCIM_API_TOKEN: optStr,
-  HELCIM_ACCOUNT_ID: optStr,
-  NEXT_PUBLIC_HELCIM_CHECKOUT_TOKEN: optStr,
 });
 
 // IMPORTANT: Next.js only inlines NEXT_PUBLIC_* vars when accessed by literal
@@ -110,10 +105,6 @@ const raw = {
 
   CRON_SECRET: process.env.CRON_SECRET,
   INTERNAL_API_TOKEN: process.env.INTERNAL_API_TOKEN,
-
-  HELCIM_API_TOKEN: process.env.HELCIM_API_TOKEN,
-  HELCIM_ACCOUNT_ID: process.env.HELCIM_ACCOUNT_ID,
-  NEXT_PUBLIC_HELCIM_CHECKOUT_TOKEN: process.env.NEXT_PUBLIC_HELCIM_CHECKOUT_TOKEN,
 };
 
 const parsed = schema.safeParse(raw);

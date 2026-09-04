@@ -2,15 +2,18 @@
   "name": "emberos",
   "version": "0.1.0",
   "private": true,
-  "description": "EmberOS — Heaven's Leaf Mission Control. A cinematic AI-powered media operating system.",
+  "description": "EmberOS \u2014 Heaven's Leaf Mission Control. A cinematic AI-powered media operating system.",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "db:push": "prisma db push",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
@@ -60,6 +63,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@types/node": "^22.7.5",
     "@types/papaparse": "^5.3.15",
     "@types/react": "^18.3.11",
@@ -71,7 +75,8 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.13",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": "22.x"

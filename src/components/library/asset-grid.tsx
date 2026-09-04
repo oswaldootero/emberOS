@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Copy,

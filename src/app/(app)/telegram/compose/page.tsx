@@ -3,7 +3,6 @@ import { ArrowLeft, Bot, ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,

@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
   ExternalLink,
@@ -12,7 +11,6 @@ import {
   Loader2,
   MessageSquare,
   Send,
-  Sparkles,
   Wand2,
 } from "lucide-react";
 import { toast } from "sonner";

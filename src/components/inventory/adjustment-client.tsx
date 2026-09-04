@@ -18,7 +18,7 @@ export type AdjustmentRow = {
   createdAt: string;
   createdBy: string | null;
   customerName: string | null;
-  orderId: string | null;
+  saleId: string | null;
 };
 
 const REASON_COLOR: Record<string, string> = {
@@ -106,13 +106,13 @@ export function AdjustmentClient({
                     <div className="text-[10px] text-muted-foreground truncate">{a.notes}</div>
                   )}
                 </div>
-                {a.orderId && (
+                {a.saleId && (
                   <Link
-                    href={`/crm`}
+                    href={`/sales/${a.saleId}`}
                     className="text-[10px] text-ember-300 inline-flex items-center gap-1 hover:underline"
-                    title="Linked order"
+                    title="Linked invoice"
                   >
-                    <LinkIcon className="h-3 w-3" /> Order
+                    <LinkIcon className="h-3 w-3" /> Invoice
                   </Link>
                 )}
                 <span className="text-[10px] text-muted-foreground shrink-0">

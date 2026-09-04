@@ -118,7 +118,7 @@ export function CustomerRow({
 
         {row.ordersCount > 0 && (
           <div className="text-[10px] text-ember-200 tabular-nums shrink-0">
-            {row.ordersCount} orders · {fmtUsd(row.ordersTotal)}
+            {row.ordersCount} {row.ordersCount === 1 ? "invoice" : "invoices"} · {fmtUsd(row.ordersTotal)}
           </div>
         )}
 

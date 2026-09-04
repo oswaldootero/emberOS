@@ -1,6 +1,13 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { snapshotItem, computeStatus, velocity, n, type Velocity } from "./inventory/calculator";
+import {
+  snapshotItem,
+  computeStatus,
+  velocity,
+  aggregateSoldLines,
+  n,
+  type Velocity,
+} from "./inventory/calculator";
 
 export type InventorySnapshot = {
   totals: {
@@ -50,116 +57,83 @@ export type InventorySnapshot = {
   }[];
 };
 
+const REVENUE_STATUSES = ["SENT", "PAID", "PARTIAL", "OVERDUE"] as const;
+
 export async function loadInventorySnapshot(
   velocityWindowDays = 30,
 ): Promise<InventorySnapshot> {
   const since = new Date(Date.now() - velocityWindowDays * 86400000);
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-  const [items, salesAgg, monthAgg, byCustomerAgg, byChannelRows] =
-    await Promise.all([
-      prisma.inventoryItem.findMany({ orderBy: { productName: "asc" } }),
-      prisma.order.groupBy({
-        by: ["inventoryItemId"],
-        where: {
-          inventoryItemId: { not: null },
-          orderDate: { gte: since },
+  // Sales come from invoice line items. Rows from cancelled/draft
+  // invoices are excluded; the window is by invoice date.
+  const [items, windowLines, monthLines] = await Promise.all([
+    prisma.inventoryItem.findMany({ orderBy: { productName: "asc" } }),
+    prisma.saleItem.findMany({
+      where: {
+        sale: {
+          status: { in: [...REVENUE_STATUSES] },
+          invoiceDate: { gte: since },
         },
-        _sum: { boxQuantity: true, totalRevenue: true },
-      }),
-      prisma.order.aggregate({
-        where: { orderDate: { gte: startOfMonth } },
-        _sum: { boxQuantity: true, totalRevenue: true },
-      }),
-      prisma.order.groupBy({
-        by: ["customerId"],
-        where: {
-          orderDate: { gte: since },
-          inventoryItemId: { not: null },
+      },
+      select: {
+        inventoryItemId: true,
+        quantity: true,
+        lineTotal: true,
+        sale: {
+          select: {
+            customerId: true,
+            customer: { select: { businessName: true, customerType: true } },
+          },
         },
-        _sum: { boxQuantity: true, totalRevenue: true },
-        orderBy: { _sum: { totalRevenue: "desc" } },
-        take: 6,
-      }),
-      prisma.order.findMany({
-        where: {
-          orderDate: { gte: since },
-          inventoryItemId: { not: null },
+      },
+    }),
+    prisma.saleItem.findMany({
+      where: {
+        sale: {
+          status: { in: [...REVENUE_STATUSES] },
+          invoiceDate: { gte: startOfMonth },
         },
-        select: {
-          boxQuantity: true,
-          totalRevenue: true,
-          customer: { select: { customerType: true } },
-        },
-      }),
-    ]);
+      },
+      select: { quantity: true, lineTotal: true },
+    }),
+  ]);
 
   const snapshots = items.map(snapshotItem);
 
-  // Top sellers — hydrate names
-  const topSkuIds = salesAgg
-    .map((s) => s.inventoryItemId)
-    .filter((id): id is string => Boolean(id));
-  const skuMeta = topSkuIds.length
-    ? await prisma.inventoryItem.findMany({
-        where: { id: { in: topSkuIds } },
-        select: { id: true, sku: true, productName: true },
-      })
-    : [];
-  const skuById = new Map(skuMeta.map((s) => [s.id, s]));
+  const agg = aggregateSoldLines(
+    windowLines.map((l) => ({
+      inventoryItemId: l.inventoryItemId,
+      quantity: l.quantity,
+      lineTotal: n(l.lineTotal),
+      customerId: l.sale.customerId,
+      customerName: l.sale.customer.businessName,
+      customerType: l.sale.customer.customerType,
+    })),
+  );
 
-  const bestSellingSkus = salesAgg
-    .map((s) => {
-      const meta = s.inventoryItemId ? skuById.get(s.inventoryItemId) : null;
+  const itemById = new Map(items.map((i) => [i.id, i]));
+  const bestSellingSkus = Array.from(agg.bySku.entries())
+    .map(([id, v]) => {
+      const meta = itemById.get(id);
       return {
-        id: s.inventoryItemId ?? "",
+        id,
         sku: meta?.sku ?? "(unknown)",
         productName: meta?.productName ?? "(unknown)",
-        packagesSold: s._sum.boxQuantity ?? 0,
-        revenue: n(s._sum.totalRevenue),
+        packagesSold: v.packagesSold,
+        revenue: v.revenue,
       };
     })
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 6);
 
-  // Sales by customer — hydrate names
-  const custIds = byCustomerAgg.map((r) => r.customerId);
-  const customerMeta = custIds.length
-    ? await prisma.customer.findMany({
-        where: { id: { in: custIds } },
-        select: { id: true, businessName: true },
-      })
-    : [];
-  const custById = new Map(customerMeta.map((c) => [c.id, c.businessName]));
+  const salesById = new Map<string, number>();
+  for (const [id, v] of agg.bySku) salesById.set(id, v.packagesSold);
 
-  const salesByCustomer = byCustomerAgg.map((r) => ({
-    customerId: r.customerId,
-    customerName: custById.get(r.customerId) ?? "(unknown)",
-    packages: r._sum.boxQuantity ?? 0,
-    revenue: n(r._sum.totalRevenue),
-  }));
-
-  // Sales by channel — fold by customer type
-  const channelMap = new Map<
-    string,
-    { channel: string; packages: number; revenue: number }
-  >();
-  for (const row of byChannelRows) {
-    const ch = row.customer?.customerType ?? "UNKNOWN";
-    const existing =
-      channelMap.get(ch) ?? { channel: ch, packages: 0, revenue: 0 };
-    existing.packages += row.boxQuantity;
-    existing.revenue += n(row.totalRevenue);
-    channelMap.set(ch, existing);
-  }
+  const soldThisMonthPackages = monthLines.reduce((s, l) => s + l.quantity, 0);
+  const soldThisMonthRevenue = monthLines.reduce((s, l) => s + n(l.lineTotal), 0);
 
   // Build per-SKU velocity → reorder recommendations
-  const salesById = new Map<string, number>();
-  for (const s of salesAgg) {
-    if (s.inventoryItemId) {
-      salesById.set(s.inventoryItemId, s._sum.boxQuantity ?? 0);
-    }
-  }
 
   const reorderRecommendations: InventorySnapshot["reorderRecommendations"] = [];
   for (const item of items) {
@@ -220,12 +194,10 @@ export async function loadInventorySnapshot(
     lowStockItems: snapshots.filter((s) => s.computedStatus === "LOW_STOCK"),
     outOfStockItems: snapshots.filter((s) => s.computedStatus === "OUT_OF_STOCK"),
     bestSellingSkus,
-    soldThisMonthPackages: monthAgg._sum.boxQuantity ?? 0,
-    soldThisMonthRevenue: n(monthAgg._sum.totalRevenue),
-    salesByCustomer,
-    salesByChannel: Array.from(channelMap.values()).sort(
-      (a, b) => b.revenue - a.revenue,
-    ),
+    soldThisMonthPackages,
+    soldThisMonthRevenue,
+    salesByCustomer: agg.salesByCustomer,
+    salesByChannel: agg.salesByChannel,
     reorderRecommendations,
   };
 }

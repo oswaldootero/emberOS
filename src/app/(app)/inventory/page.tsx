@@ -1,8 +1,6 @@
 import Link from "next/link";
 import {
-  AlertTriangle,
   Boxes,
-  ExternalLink,
   Package,
   Plus,
   RefreshCw,
@@ -20,7 +18,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  InventoryStatusBadge,
   pretty,
 } from "@/components/inventory/status-badge";
 import { InventoryRow } from "@/components/inventory/inventory-row";
@@ -28,7 +25,6 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { loadInventorySnapshot } from "@/server/inventory";
 import { snapshotItem } from "@/server/inventory/calculator";
-import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Inventory" };
 export const dynamic = "force-dynamic";

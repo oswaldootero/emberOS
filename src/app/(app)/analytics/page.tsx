@@ -9,7 +9,6 @@ import {
   Coins,
   Database,
   ExternalLink,
-  Eye,
   FileText,
   Globe,
   Search,

@@ -151,22 +151,6 @@ enum SaleSource {
   EXTERNAL    // recorded manually; invoiced somewhere else
 }
 
-enum OrderPaymentStatus {
-  UNPAID
-  PAID
-  PARTIAL
-  OVERDUE
-  REFUNDED
-}
-
-enum OrderFulfillmentStatus {
-  PENDING
-  IN_PROGRESS
-  SHIPPED
-  DELIVERED
-  CANCELLED
-}
-
 enum BlendType {
   MADURO
   CONNECTICUT
@@ -250,9 +234,7 @@ model User {
   analyticsImports    AnalyticsImport[]
   forecastScenarios   ForecastScenario[]
   assignedCustomers   Customer[]        @relation("AssignedCustomers")
-  createdOrders       Order[]           @relation("OrderCreator")
   inventoryAdjustments InventoryAdjustment[]
-  paymentLinks        PaymentLink[]     @relation("PaymentLinkCreator")
   sales               Sale[]            @relation("SaleCreator")
   assignedProspects   Prospect[]        @relation("AssignedProspects")
   prospectActivities  ProspectActivity[]
@@ -891,11 +873,8 @@ model Customer {
   nextFollowupDate  DateTime?
   archivedAt        DateTime?       // soft-delete / archive
 
-  orders            Order[]
   sales             Sale[]
   prospect          Prospect?
-  paymentLinks      PaymentLink[]
-  cardsOnFile       CardOnFile[]
 
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
@@ -907,50 +886,6 @@ model Customer {
   @@index([archivedAt])
   @@index([businessName])
   @@index([email])
-}
-
-model Order {
-  id                  String                  @id @default(cuid())
-  customer            Customer                @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  customerId          String
-
-  orderDate           DateTime                @default(now())
-  product             String                  // blend / SKU
-  boxQuantity         Int
-  pricePerBox         Decimal                 @db.Decimal(10, 2)
-  totalRevenue        Decimal                 @db.Decimal(12, 2)
-  brokerCommission    Decimal                 @db.Decimal(10, 2) @default(0)
-  costOfGoods         Decimal                 @db.Decimal(10, 2)
-  grossProfit         Decimal                 @db.Decimal(12, 2)
-  netProfit           Decimal                 @db.Decimal(12, 2)
-
-  paymentStatus       OrderPaymentStatus      @default(UNPAID)
-  fulfillmentStatus   OrderFulfillmentStatus  @default(PENDING)
-  reorderDueDate      DateTime?
-
-  notes               String?                 @db.Text
-
-  // Optional link to inventory SKU — when set, the order deducts stock
-  // and creates a SALE InventoryAdjustment automatically
-  inventoryItem       InventoryItem?          @relation(fields: [inventoryItemId], references: [id])
-  inventoryItemId     String?
-
-  adjustments         InventoryAdjustment[]
-
-  createdBy           User?                   @relation("OrderCreator", fields: [createdById], references: [id])
-  createdById         String?
-
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
-
-  paymentLinks        PaymentLink[]
-
-  @@index([customerId])
-  @@index([orderDate])
-  @@index([paymentStatus])
-  @@index([inventoryItemId])
-  @@index([fulfillmentStatus])
-  @@index([reorderDueDate])
 }
 
 // -----------------------------
@@ -985,7 +920,6 @@ model InventoryItem {
   notes                   String?               @db.Text
 
   adjustments             InventoryAdjustment[]
-  orders                  Order[]
   saleItems               SaleItem[]
   eventItems              EventItem[]
 
@@ -1011,9 +945,9 @@ model InventoryAdjustment {
 
   notes           String?             @db.Text
 
-  // Optional link back to triggering order
-  order           Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  orderId         String?
+  // Optional link back to the invoice that triggered the adjustment
+  sale            Sale?               @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  saleId          String?
 
   createdBy       User?               @relation(fields: [createdById], references: [id])
   createdById     String?
@@ -1022,51 +956,7 @@ model InventoryAdjustment {
 
   @@index([inventoryItemId, createdAt])
   @@index([reason])
-  @@index([orderId])
-}
-
-// -----------------------------
-// Payments — Helcim integration
-// -----------------------------
-// Cards are never stored in the EmberOS DB. We only hold Helcim's
-// tokenized references (customerCode + cardToken) so a charge can be
-// re-run later. PCI scope: SAQ-A — the card iframe is hosted by Helcim.
-
-enum PaymentLinkStatus {
-  PENDING         // link created, waiting for customer to enter card
-  CARD_CAPTURED   // customer entered a card; token stored on file
-  CHARGED         // the card was charged successfully
-  EXPIRED         // expiresAt passed without capture
-  VOIDED          // sales rep cancelled the link
-}
-
-model PaymentLink {
-  id              String            @id @default(cuid())
-  code            String            @unique          // short URL slug (nanoid)
-
-  customer        Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  customerId      String
-
-  order           Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  orderId         String?
-
-  amountCents     Int                                // stored in cents to dodge Decimal/float mismatch
-  status          PaymentLinkStatus @default(PENDING)
-  expiresAt       DateTime
-
-  capturedCard    CardOnFile?       @relation(fields: [capturedCardId], references: [id])
-  capturedCardId  String?
-
-  createdBy       User              @relation("PaymentLinkCreator", fields: [createdById], references: [id])
-  createdById     String
-
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-
-  @@index([code])
-  @@index([customerId])
-  @@index([orderId])
-  @@index([status])
+  @@index([saleId])
 }
 
 // -----------------------------
@@ -1103,6 +993,7 @@ model Sale {
   internalNotes  String?     @db.Text            // team-only
 
   items          SaleItem[]
+  adjustments    InventoryAdjustment[]
 
   createdBy      User?       @relation("SaleCreator", fields: [createdById], references: [id])
   createdById    String?
@@ -1136,29 +1027,6 @@ model SaleItem {
 
   @@index([saleId])
   @@index([inventoryItemId])
-}
-
-model CardOnFile {
-  id                 String        @id @default(cuid())
-
-  customer           Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  customerId         String
-
-  helcimCustomerCode String                          // Helcim's vault customer ID
-  helcimCardToken    String                          // per-card token; NOT the PAN
-
-  brand              String                          // "visa" | "mastercard" | "amex" | ...
-  last4              String
-  expMonth           Int
-  expYear            Int
-
-  archivedAt         DateTime?                       // soft-delete if customer asks to remove
-  createdAt          DateTime      @default(now())
-
-  paymentLinks       PaymentLink[]
-
-  @@index([customerId])
-  @@index([archivedAt])
 }
 
 // -----------------------------

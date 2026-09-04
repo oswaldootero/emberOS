@@ -94,9 +94,6 @@ export default async function CRMPage({
           where: { status: { in: ["SENT", "PAID", "PARTIAL", "OVERDUE"] } },
           select: { grandTotal: true },
         },
-        orders: {
-          select: { totalRevenue: true },
-        },
       },
     }),
     prisma.customer.count({ where }),
@@ -127,7 +124,7 @@ export default async function CRMPage({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi label="Active accounts" value={snapshot.totals.activeAccounts.toString()} icon={Users} accent="text-emerald-300" />
         <Kpi label="Leads in flight" value={snapshot.totals.leads.toString()} icon={TrendingUp} />
-        <Kpi label="Broker commissions owed" value={fmtUsd(snapshot.brokerCommissionsOwed)} icon={CalendarClock} accent="text-amber-300" hint={`${fmtUsd(snapshot.brokerCommissionsThisMonth)} this month`} />
+        <Kpi label="Outstanding balance" value={fmtUsd(snapshot.outstandingBalance)} icon={CalendarClock} accent="text-amber-300" hint={`${fmtUsd(snapshot.revenueThisMonth)} invoiced this month`} />
         <Kpi label="Total customers" value={snapshot.totals.customers.toString()} icon={Users} hint={`${snapshot.totals.inactive} inactive`} />
       </div>
 
@@ -135,21 +132,23 @@ export default async function CRMPage({
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Reorder pipeline</CardTitle>
-            <CardDescription>Next 8 reorders due.</CardDescription>
+            <CardDescription>Predicted from each customer&apos;s invoice cadence.</CardDescription>
           </CardHeader>
           <CardContent>
             {snapshot.reorderPipeline.length === 0 ? (
-              <EmptyHint label="No upcoming reorders." />
+              <EmptyHint label="No reorders predicted — needs customers with two or more invoices." />
             ) : (
               <ul className="divide-y divide-white/[0.04]">
                 {snapshot.reorderPipeline.map((r) => (
-                  <li key={r.id} className="py-2 flex items-center gap-3 text-sm">
-                    <div className="flex-1 min-w-0">
+                  <li key={r.customerId} className="py-2 flex items-center gap-3 text-sm">
+                    <Link href={`/crm/${r.customerId}`} className="flex-1 min-w-0 hover:text-ember-200">
                       <div className="text-ivory truncate">{r.customerName}</div>
-                      <div className="text-[10px] text-muted-foreground truncate">{r.product}</div>
-                    </div>
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        Orders about every {r.avgDaysBetween}d · last {fmtUsd(r.lastTotal)}
+                      </div>
+                    </Link>
                     <Badge variant={r.daysUntil <= 7 ? "warning" : "outline"} className="text-[10px]">
-                      {r.daysUntil <= 0 ? "due" : `in ${r.daysUntil}d`}
+                      {r.daysUntil < 0 ? `${-r.daysUntil}d overdue` : r.daysUntil === 0 ? "due" : `in ${r.daysUntil}d`}
                     </Badge>
                   </li>
                 ))}
@@ -271,10 +270,6 @@ export default async function CRMPage({
                   (s, x) => s + Number(x.grandTotal?.toString() ?? 0),
                   0,
                 );
-                const ordersTotal = c.orders.reduce(
-                  (s, o) => s + Number(o.totalRevenue?.toString() ?? 0),
-                  0,
-                );
                 return {
                   id: c.id,
                   businessName: c.businessName,
@@ -288,8 +283,8 @@ export default async function CRMPage({
                   nextFollowupDate: c.nextFollowupDate
                     ? c.nextFollowupDate.toISOString()
                     : null,
-                  ordersCount: c.sales.length + c.orders.length,
-                  ordersTotal: salesTotal + ordersTotal,
+                  ordersCount: c.sales.length,
+                  ordersTotal: salesTotal,
                 };
               })}
             />

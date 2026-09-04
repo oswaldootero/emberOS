@@ -6,7 +6,6 @@ import { useTransition } from "react";
 import {
   Archive,
   ArchiveRestore,
-  CreditCard,
   FileText,
   Loader2,
   Mail,
@@ -112,28 +111,16 @@ export type AnalyticsData = {
   revenueByMonth: { month: string; revenue: number }[];
 };
 
-export type CardOnFileRow = {
-  id: string;
-  brand: string;
-  last4: string;
-  expMonth: number;
-  expYear: number;
-};
-
 export function CustomerTabs({
   customer,
   analytics,
   sales,
   timeline,
-  cardsOnFile,
-  legacyOrders,
 }: {
   customer: CustomerData;
   analytics: AnalyticsData;
   sales: SaleRow[];
   timeline: TimelineEvent[];
-  cardsOnFile: CardOnFileRow[];
-  legacyOrders?: React.ReactNode;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -249,7 +236,6 @@ export function CustomerTabs({
           <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          {legacyOrders && <TabsTrigger value="orders">Orders (legacy)</TabsTrigger>}
         </TabsList>
 
         {/* Overview */}
@@ -318,30 +304,6 @@ export function CustomerTabs({
                 )}
               </CardContent>
             </Card>
-
-            {cardsOnFile.length > 0 && (
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-base">Cards on file</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                  {cardsOnFile.map((c) => (
-                    <div
-                      key={c.id}
-                      className="flex items-center gap-2 rounded-md border border-white/[0.06] bg-ink-900/40 px-3 py-2 text-xs"
-                    >
-                      <CreditCard className="h-3.5 w-3.5 text-emerald-300" />
-                      <span className="text-ivory">
-                        {c.brand.toUpperCase()} •••• {c.last4}
-                      </span>
-                      <span className="text-muted-foreground">
-                        exp {String(c.expMonth).padStart(2, "0")}/{String(c.expYear).slice(-2)}
-                      </span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
           </div>
         </TabsContent>
 
@@ -474,13 +436,6 @@ export function CustomerTabs({
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Legacy orders */}
-        {legacyOrders && (
-          <TabsContent value="orders" className="mt-4">
-            {legacyOrders}
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );

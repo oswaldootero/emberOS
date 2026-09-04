@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CustomerDetailClient } from "@/components/crm/customer-detail-client";
 import { CustomerTabs } from "@/components/crm/customer-tabs";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
@@ -19,7 +18,7 @@ export default async function CustomerDetailPage({
   await requireUser();
   const { id } = await params;
 
-  const [customer, analytics, defaultScenario, skus] = await Promise.all([
+  const [customer, analytics] = await Promise.all([
     prisma.customer.findUnique({
       where: { id },
       include: {
@@ -36,38 +35,16 @@ export default async function CustomerDetailPage({
             amountPaid: true,
           },
         },
-        orders: {
-          orderBy: { orderDate: "desc" },
-          include: {
-            paymentLinks: {
-              orderBy: { createdAt: "desc" },
-              include: { capturedCard: true },
-            },
-          },
-        },
-        cardsOnFile: {
-          where: { archivedAt: null },
-          orderBy: { createdAt: "desc" },
-        },
         assignedTo: { select: { fullName: true, email: true } },
       },
     }),
     loadCustomerAnalytics(id),
-    prisma.forecastScenario.findFirst({
-      where: { isDefault: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.inventoryItem.findMany({
-      where: { status: { not: "DISCONTINUED" } },
-      orderBy: [{ packagingType: "asc" }, { productName: "asc" }],
-    }),
   ]);
 
   if (!customer) notFound();
 
   // Activity timeline: audit events for the customer + its sales
   const saleIds = customer.sales.map((s) => s.id);
-  const orderIds = customer.orders.map((o) => o.id);
   const auditRows = await prisma.auditLog.findMany({
     where: {
       OR: [
@@ -75,88 +52,12 @@ export default async function CustomerDetailPage({
         ...(saleIds.length
           ? [{ entityType: "Sale", entityId: { in: saleIds } }]
           : []),
-        ...(orderIds.length
-          ? [{ entityType: "Order", entityId: { in: orderIds } }]
-          : []),
       ],
     },
     orderBy: { createdAt: "desc" },
     take: 30,
     include: { actor: { select: { fullName: true, email: true } } },
   });
-
-  const orderDefaults = defaultScenario
-    ? {
-        pricePerBox: Number(defaultScenario.wholesaleBoxPrice.toString()),
-        costPerBox:
-          Number(defaultScenario.landedCostPerCigar.toString()) *
-          defaultScenario.cigarsPerBox,
-        brokerCommissionPct: Number(
-          defaultScenario.brokerCommissionPct.toString(),
-        ),
-      }
-    : { pricePerBox: 65, costPerBox: 67, brokerCommissionPct: 0.15 };
-
-  const legacyOrders =
-    customer.orders.length > 0 ? (
-      <CustomerDetailClient
-        customerId={customer.id}
-        skus={skus.map((s) => ({
-          id: s.id,
-          sku: s.sku,
-          productName: s.productName,
-          packagesOnHand: s.packagesOnHand,
-          unitsPerPackage: s.unitsPerPackage,
-          wholesalePrice: Number(s.wholesalePrice.toString()),
-          costPerUnit: Number(s.costPerUnit.toString()),
-        }))}
-        cardsOnFile={customer.cardsOnFile.map((c) => ({
-          id: c.id,
-          brand: c.brand,
-          last4: c.last4,
-          expMonth: c.expMonth,
-          expYear: c.expYear,
-        }))}
-        orders={customer.orders.map((o) => {
-          const activeLink = o.paymentLinks.find(
-            (l) => l.status === "PENDING" || l.status === "CARD_CAPTURED",
-          );
-          return {
-            id: o.id,
-            orderDate: o.orderDate.toISOString(),
-            product: o.product,
-            boxQuantity: o.boxQuantity,
-            pricePerBox: Number(o.pricePerBox.toString()),
-            totalRevenue: Number(o.totalRevenue.toString()),
-            brokerCommission: Number(o.brokerCommission.toString()),
-            costOfGoods: Number(o.costOfGoods.toString()),
-            grossProfit: Number(o.grossProfit.toString()),
-            netProfit: Number(o.netProfit.toString()),
-            paymentStatus: o.paymentStatus,
-            fulfillmentStatus: o.fulfillmentStatus,
-            reorderDueDate: o.reorderDueDate?.toISOString() ?? null,
-            notes: o.notes,
-            activeLink: activeLink
-              ? {
-                  id: activeLink.id,
-                  code: activeLink.code,
-                  status: activeLink.status,
-                  capturedCard: activeLink.capturedCard
-                    ? {
-                        id: activeLink.capturedCard.id,
-                        brand: activeLink.capturedCard.brand,
-                        last4: activeLink.capturedCard.last4,
-                        expMonth: activeLink.capturedCard.expMonth,
-                        expYear: activeLink.capturedCard.expYear,
-                      }
-                    : null,
-                }
-              : null,
-          };
-        })}
-        orderDefaults={orderDefaults}
-      />
-    ) : undefined;
 
   return (
     <div className="space-y-4">
@@ -213,14 +114,6 @@ export default async function CustomerDetailPage({
           actor: a.actor?.fullName ?? a.actor?.email ?? null,
           detail: null,
         }))}
-        cardsOnFile={customer.cardsOnFile.map((c) => ({
-          id: c.id,
-          brand: c.brand,
-          last4: c.last4,
-          expMonth: c.expMonth,
-          expYear: c.expYear,
-        }))}
-        legacyOrders={legacyOrders}
       />
     </div>
   );

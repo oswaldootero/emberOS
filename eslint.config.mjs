@@ -1,0 +1,32 @@
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { FlatCompat } from "@eslint/eslintrc";
+
+const compat = new FlatCompat({
+  baseDirectory: dirname(fileURLToPath(import.meta.url)),
+});
+
+const config = [
+  {
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "public/sw*.js",
+      "public/swe-worker*.js",
+      "next-env.d.ts",
+    ],
+  },
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      // Apostrophes and quotes in JSX copy render fine; escaping them hurts readability.
+      "react/no-unescaped-entities": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
+      ],
+    },
+  },
+];
+
+export default config;
