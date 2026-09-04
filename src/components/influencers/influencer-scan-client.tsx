@@ -8,31 +8,12 @@ import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { fmtFollowers } from "./stage-badge";
+import { compressImage } from "@/lib/compress-image";
 import {
   createInfluencer,
   extractInfluencerFromScreenshots,
   type ExtractedInfluencer,
 } from "@/server/actions/influencers";
-
-/** Downscale to keep uploads fast on cell connections — text stays readable. */
-async function compress(file: File): Promise<File> {
-  try {
-    const bmp = await createImageBitmap(file);
-    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
-    if (scale === 1 && file.size < 1_500_000) return file;
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bmp.width * scale);
-    canvas.height = Math.round(bmp.height * scale);
-    canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((res) =>
-      canvas.toBlob(res, "image/jpeg", 0.85),
-    );
-    if (!blob) return file;
-    return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
-  } catch {
-    return file;
-  }
-}
 
 export function InfluencerScanClient() {
   const router = useRouter();
@@ -61,7 +42,7 @@ export function InfluencerScanClient() {
     setResult(null);
     try {
       const fd = new FormData();
-      for (const p of previews) fd.append("images", await compress(p.file));
+      for (const p of previews) fd.append("images", await compressImage(p.file));
       const r = await extractInfluencerFromScreenshots(fd);
       if (!r.ok) {
         toast.error(r.error);

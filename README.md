@@ -23,7 +23,7 @@ A cinematic AI-powered media operating system for **Heaven's Leaf** — a premiu
 | **Brand Voice** | Persistent tone, vocabulary, forbidden words, theological guardrails — loaded into every AI call. |
 | **Workflows** | Visual automation pipelines (`blog published → cascade everywhere`). |
 | **Asset Library** | Supabase Storage-backed media library. |
-| **Social Scouting** | Instagram mentions inbox (who's tagging you) + handle lookup with engagement rate; one click to influencer or prospect. See `docs/SOCIAL-SCOUTING.md`. |
+| **Social Scouting** | Instagram mentions inbox — capture from a link or screenshot with zero setup, or connect Meta for automatic sync and handle lookup. One click to influencer or prospect. See `docs/SOCIAL-SCOUTING.md`. |
 
 ---
 

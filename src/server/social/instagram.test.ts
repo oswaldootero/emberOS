@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cleanInstagramHandle,
+  parseInstagramUrl,
   engagementStats,
   mentionFromComment,
   mentionFromMedia,
@@ -125,5 +126,35 @@ describe("parseMentionWebhook", () => {
     expect(parseMentionWebhook({ object: "page", entry: [] })).toEqual([]);
     expect(parseMentionWebhook(null)).toEqual([]);
     expect(parseMentionWebhook("nope")).toEqual([]);
+  });
+});
+
+describe("parseInstagramUrl", () => {
+  it("recognizes profile links with or without scheme and share tokens", () => {
+    expect(parseInstagramUrl("https://www.instagram.com/heavensleaf/?igsh=abc")).toEqual({
+      kind: "profile",
+      handle: "heavensleaf",
+      url: "https://www.instagram.com/heavensleaf/",
+    });
+    expect(parseInstagramUrl("instagram.com/Cigar.Lounge")).toMatchObject({ kind: "profile", handle: "Cigar.Lounge" });
+  });
+  it("recognizes posts and reels, with the poster when the URL carries it", () => {
+    expect(parseInstagramUrl("https://www.instagram.com/p/C1a2B3/")).toEqual({
+      kind: "post", code: "C1a2B3", handle: null, url: "https://www.instagram.com/p/C1a2B3/",
+    });
+    expect(parseInstagramUrl("https://www.instagram.com/lounge_x/p/C1a2B3/")).toMatchObject({ kind: "post", code: "C1a2B3", handle: "lounge_x" });
+    expect(parseInstagramUrl("https://instagram.com/reel/XYZ")).toMatchObject({ kind: "reel", code: "XYZ" });
+    expect(parseInstagramUrl("https://instagram.com/reels/XYZ")).toMatchObject({ kind: "reel", url: "https://www.instagram.com/reel/XYZ/" });
+  });
+  it("recognizes story links by handle", () => {
+    expect(parseInstagramUrl("https://www.instagram.com/stories/fan_account/3141592/")).toEqual({
+      kind: "story", handle: "fan_account", url: "https://www.instagram.com/stories/fan_account/3141592/",
+    });
+  });
+  it("rejects other hosts and junk", () => {
+    expect(parseInstagramUrl("https://tiktok.com/@x")).toBeNull();
+    expect(parseInstagramUrl("not a url at all")).toBeNull();
+    expect(parseInstagramUrl("https://www.instagram.com/")).toBeNull();
+    expect(parseInstagramUrl("https://www.instagram.com/explore/")).toBeNull();
   });
 });

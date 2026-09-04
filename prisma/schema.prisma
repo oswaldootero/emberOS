@@ -1403,6 +1403,7 @@ enum SocialMentionSource {
   TAG              // tagged in the photo/video
   CAPTION_MENTION  // @mentioned in a caption
   COMMENT_MENTION  // @mentioned in a comment
+  MANUAL           // captured by hand from a link or screenshot
 }
 
 enum SocialMentionStatus {

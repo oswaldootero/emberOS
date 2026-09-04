@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AtSign, Inbox, Megaphone, ScanSearch, Store } from "lucide-react";
+import { AtSign, Camera, Inbox, Megaphone, ScanSearch, Store } from "lucide-react";
 import type { SocialMentionStatus } from "@prisma/client";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,15 +88,20 @@ export default async function MentionsInboxPage({
           </Link>
         </Button>
         <SyncMentionsButton configured={configured} />
+        <Button variant="gold" size="sm" asChild>
+          <Link href="/social/capture">
+            <Camera className="h-4 w-4" /> Capture
+          </Link>
+        </Button>
       </PageHeader>
 
       {!configured && (
         <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-4 text-sm text-ivory space-y-1">
-          <div className="font-medium">Instagram isn&apos;t connected yet.</div>
+          <div className="font-medium">Manual mode.</div>
           <p className="text-xs text-muted-foreground">
-            Mentions will start flowing once the Meta app is set up and the env vars are in place.
-            The walkthrough lives in <span className="font-mono">docs/SOCIAL-SCOUTING.md</span>; connection
-            status is on the <Link href="/settings" className="text-ember-200 hover:underline">Settings</Link> page.
+            Instagram isn&apos;t connected, so use <Link href="/social/capture" className="text-ember-200 hover:underline">Capture</Link> whenever
+            someone tags you: paste the link or drop a screenshot. Automatic sync is optional and documented
+            in <span className="font-mono">docs/SOCIAL-SCOUTING.md</span>.
           </p>
         </div>
       )}
@@ -136,9 +141,16 @@ export default async function MentionsInboxPage({
               <AtSign className="h-8 w-8 mx-auto text-muted-foreground opacity-40" />
               <p className="text-sm text-muted-foreground">
                 {status === "NEW"
-                  ? "Nothing new. Tags arrive on the six-hour sync or with Sync now; caption and comment mentions arrive instantly by webhook."
+                  ? configured
+                    ? "Nothing new. Tags arrive on the six-hour sync or with Sync now; caption and comment mentions arrive instantly by webhook."
+                    : "Nothing captured yet. Next time someone tags Heaven's Leaf, hit Capture and paste the link or a screenshot."
                   : "No mentions match this filter."}
               </p>
+              {status === "NEW" && (
+                <Button variant="gold" size="sm" asChild>
+                  <Link href="/social/capture"><Camera className="h-3.5 w-3.5" /> Capture a mention</Link>
+                </Button>
+              )}
             </div>
           ) : (
             <>

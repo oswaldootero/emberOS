@@ -114,7 +114,7 @@ export function summarizeProfile(d: IgBusinessDiscovery): IgProfileSummary {
 // Mentions
 // ─────────────────────────────────────────────────────────────────
 
-export type MentionSource = "TAG" | "CAPTION_MENTION" | "COMMENT_MENTION";
+export type MentionSource = "TAG" | "CAPTION_MENTION" | "COMMENT_MENTION" | "MANUAL";
 
 export type MentionRecord = {
   source: MentionSource;
@@ -204,4 +204,57 @@ export function parseMentionWebhook(payload: unknown): MentionEvent[] {
     }
   }
   return out;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Manual capture (no API) — parse pasted links
+// ─────────────────────────────────────────────────────────────────
+
+export type ParsedInstagramUrl =
+  | { kind: "profile"; handle: string; url: string }
+  | { kind: "post" | "reel"; code: string; handle: string | null; url: string }
+  | { kind: "story"; handle: string; url: string };
+
+const RESERVED = new Set(["p", "reel", "reels", "stories", "explore", "accounts", "tv", "direct"]);
+
+/**
+ * Understand the links people copy from the Instagram app:
+ *   instagram.com/<handle>/                → profile
+ *   instagram.com/p/<code>/                → post (poster unknown)
+ *   instagram.com/<handle>/p/<code>/       → post by handle
+ *   instagram.com/reel/<code>/             → reel
+ *   instagram.com/stories/<handle>/<id>/   → story by handle
+ * Query strings (igsh=… share tokens) are dropped from the normalized URL.
+ */
+export function parseInstagramUrl(input: string): ParsedInstagramUrl | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  let u: URL;
+  try {
+    u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+  } catch {
+    return null;
+  }
+  if (!/(^|\.)instagram\.com$/i.test(u.hostname)) return null;
+  const parts = u.pathname.split("/").filter(Boolean);
+  if (parts.length === 0) return null;
+  const clean = (segs: string[]) => `https://www.instagram.com/${segs.join("/")}/`;
+
+  const [a, b, c] = parts;
+  if ((a === "p" || a === "reel" || a === "reels") && b) {
+    return { kind: a === "p" ? "post" : "reel", code: b, handle: null, url: clean([a === "reels" ? "reel" : a, b]) };
+  }
+  if (a === "stories" && b && !RESERVED.has(b)) {
+    const handle = cleanInstagramHandle(b);
+    return handle ? { kind: "story", handle, url: clean(c ? ["stories", handle, c] : ["stories", handle]) } : null;
+  }
+  if (a && !RESERVED.has(a)) {
+    const handle = cleanInstagramHandle(a);
+    if (!handle) return null;
+    if ((b === "p" || b === "reel") && c) {
+      return { kind: b === "p" ? "post" : "reel", code: c, handle, url: clean([b, c]) };
+    }
+    return { kind: "profile", handle, url: clean([handle]) };
+  }
+  return null;
 }

@@ -29,7 +29,7 @@ import {
 
 export type MentionRow = {
   id: string;
-  source: "TAG" | "CAPTION_MENTION" | "COMMENT_MENTION";
+  source: "TAG" | "CAPTION_MENTION" | "COMMENT_MENTION" | "MANUAL";
   username: string;
   caption: string | null;
   permalink: string | null;
@@ -47,6 +47,7 @@ const SOURCE_LABEL: Record<MentionRow["source"], string> = {
   TAG: "Tagged",
   CAPTION_MENTION: "Caption",
   COMMENT_MENTION: "Comment",
+  MANUAL: "Captured",
 };
 
 const fmtWhen = (iso: string) =>
@@ -57,7 +58,7 @@ export function SyncMentionsButton({ configured }: { configured: boolean }) {
   const [pending, start] = useTransition();
   return (
     <Button
-      variant="gold"
+      variant="outline"
       size="sm"
       disabled={!configured || pending}
       title={configured ? "Pull the latest tagged posts" : "Connect Instagram first"}

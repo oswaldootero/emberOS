@@ -22,6 +22,7 @@ import {
   Radar,
   AtSign,
   ScanSearch,
+  Camera,
 } from "lucide-react";
 
 export type NavChild = {
@@ -123,6 +124,11 @@ export const navigation: NavSection[] = [
             label: "Mentions inbox",
             href: "/social/mentions",
             icon: AtSign,
+          },
+          {
+            label: "Capture",
+            href: "/social/capture",
+            icon: Camera,
           },
           {
             label: "Handle lookup",

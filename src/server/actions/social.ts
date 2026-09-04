@@ -11,10 +11,13 @@ import {
 } from "@/server/integrations/meta";
 import {
   cleanInstagramHandle,
+  mentionExternalId,
+  parseInstagramUrl,
   summarizeProfile,
   type IgProfileSummary,
+  type MentionRecord,
 } from "@/server/social/instagram";
-import { syncTaggedMedia } from "@/server/social/sync";
+import { syncTaggedMedia, upsertMentions } from "@/server/social/sync";
 
 export type SocialResult<T extends object = object> =
   | ({ ok: true } & T)
@@ -334,4 +337,180 @@ export async function logMentionAsPost(
   });
   revalidateSocial(m.influencerId);
   return { ok: true, influencerId: m.influencerId };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Quick capture — no API. Paste a link and/or drop screenshots.
+// ─────────────────────────────────────────────────────────────────
+
+export type CapturedMention = {
+  username: string | null;
+  caption: string | null;
+  likes: number | null;
+  comments: number | null;
+  mediaType: "POST" | "STORY" | "REEL" | "COMMENT" | null;
+  postedAt: string | null; // ISO date if visible
+  notes: string | null;
+};
+
+export type CaptureResult =
+  | {
+      ok: true;
+      mentionId: string;
+      username: string;
+      /** True when a mention with this link already existed and was refreshed */
+      duplicate: boolean;
+      influencer: { id: string; name: string } | null;
+      prospect: { id: string; name: string } | null;
+    }
+  | { ok: false; error: string };
+
+async function extractMentionFromScreenshots(files: File[]): Promise<CapturedMention | null> {
+  const { openai, MODELS } = await import("@/lib/openai");
+  const images = await Promise.all(
+    files.map(async (f) => ({
+      type: "image_url" as const,
+      image_url: {
+        url: `data:${f.type};base64,${Buffer.from(await f.arrayBuffer()).toString("base64")}`,
+      },
+    })),
+  );
+  try {
+    const r = await openai().chat.completions.create({
+      model: MODELS.primary(),
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You read screenshots from the Instagram app for a premium cigar brand (Heaven's Leaf, @heavensleaf). The screenshot shows a post, story, reel, comment, or a notification where someone tagged or mentioned the brand.
+
+Return JSON with exactly these keys (null when not visible — never guess):
+username (the OTHER account's @username without the @ — the person who posted or commented, never heavensleaf), caption (the post caption or comment text verbatim, trimmed), likes (integer; expand "1.2K" to 1200), comments (integer), mediaType (one of "POST", "STORY", "REEL", "COMMENT", or null), postedAt (ISO date YYYY-MM-DD if a date or "3d ago"-style hint lets you compute it relative to today ${new Date().toISOString().slice(0, 10)}; else null), notes (anything useful for a partnerships manager: it's a lounge/shop, verified badge, other brands tagged, sentiment — or null).
+
+If no Instagram content is recognizable, return {"username": null}.`,
+        },
+        {
+          role: "user",
+          content: [{ type: "text", text: "Extract the mention from these screenshots:" }, ...images],
+        },
+      ],
+    });
+    const parsed = JSON.parse(r.choices[0]?.message?.content ?? "{}") as Partial<CapturedMention>;
+    return {
+      username: typeof parsed.username === "string" ? parsed.username : null,
+      caption: typeof parsed.caption === "string" ? parsed.caption : null,
+      likes: typeof parsed.likes === "number" ? parsed.likes : null,
+      comments: typeof parsed.comments === "number" ? parsed.comments : null,
+      mediaType:
+        parsed.mediaType && ["POST", "STORY", "REEL", "COMMENT"].includes(parsed.mediaType)
+          ? parsed.mediaType
+          : null,
+      postedAt: typeof parsed.postedAt === "string" ? parsed.postedAt : null,
+      notes: typeof parsed.notes === "string" ? parsed.notes : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create a mention by hand. Accepts any combination of: an Instagram link
+ * (profile / post / reel / story), a typed handle, and up to 3 screenshots.
+ * The handle is resolved in this order: typed → from the link → from the
+ * screenshot. Screenshots also supply caption and engagement.
+ */
+export async function captureMention(formData: FormData): Promise<CaptureResult> {
+  const user = await requireUser();
+
+  const linkRaw = String(formData.get("link") ?? "").trim();
+  const handleRaw = String(formData.get("handle") ?? "").trim();
+  const noteRaw = String(formData.get("note") ?? "").trim();
+  const files = formData
+    .getAll("images")
+    .filter((f): f is File => f instanceof File && f.size > 0)
+    .slice(0, 3);
+  for (const f of files) {
+    if (f.size > 8_000_000) return { ok: false, error: "Image too large (max 8MB)." };
+    if (!f.type.startsWith("image/")) return { ok: false, error: "Only images are supported." };
+  }
+
+  const parsedLink = linkRaw ? parseInstagramUrl(linkRaw) : null;
+  if (linkRaw && !parsedLink) {
+    return { ok: false, error: "That doesn't look like an Instagram link. Paste a profile, post, reel, or story URL." };
+  }
+
+  let extracted: CapturedMention | null = null;
+  if (files.length > 0) {
+    extracted = await extractMentionFromScreenshots(files);
+    if (!extracted) return { ok: false, error: "Couldn't read the screenshot — try a clearer one." };
+  }
+
+  const username =
+    cleanInstagramHandle(handleRaw) ??
+    (parsedLink && "handle" in parsedLink ? parsedLink.handle : null) ??
+    cleanInstagramHandle(extracted?.username);
+  if (!username) {
+    return {
+      ok: false,
+      error: files.length
+        ? "Couldn't find the other account's @handle in the screenshot — type it in the handle field."
+        : "Add the @handle, or a link that includes it, or a screenshot.",
+    };
+  }
+  if (username.toLowerCase() === "heavensleaf") {
+    return { ok: false, error: "That's your own account — enter the handle of the person who tagged you." };
+  }
+
+  const mediaType =
+    extracted?.mediaType ??
+    (parsedLink?.kind === "reel" ? "REEL" : parsedLink?.kind === "story" ? "STORY" : parsedLink?.kind === "post" ? "POST" : null);
+  const postedAt = extracted?.postedAt ? new Date(`${extracted.postedAt}T12:00:00`) : new Date();
+  const permalink = parsedLink && parsedLink.kind !== "profile" ? parsedLink.url : null;
+  const externalId = permalink
+    ? mentionExternalId("MANUAL", permalink)
+    : mentionExternalId("MANUAL", `${username}:${Date.now()}`);
+  const captionBits = [extracted?.caption, noteRaw ? `Note: ${noteRaw}` : null, extracted?.notes ? `AI: ${extracted.notes}` : null]
+    .filter(Boolean);
+
+  const record: MentionRecord = {
+    source: "MANUAL",
+    externalId,
+    mediaId: parsedLink && "code" in parsedLink ? parsedLink.code : null,
+    username,
+    caption: captionBits.length ? captionBits.join("\n") : null,
+    permalink,
+    mediaType,
+    likeCount: extracted?.likes ?? null,
+    commentCount: extracted?.comments ?? null,
+    postedAt: isNaN(postedAt.getTime()) ? new Date() : postedAt,
+    raw: { capturedBy: user.id, link: linkRaw || null, screenshots: files.length, extracted },
+  };
+
+  const existed = await prisma.socialMention.findUnique({ where: { externalId }, select: { id: true } });
+  await upsertMentions([record]);
+  const m = await prisma.socialMention.findUnique({
+    where: { externalId },
+    include: {
+      influencer: { select: { id: true, name: true } },
+      prospect: { select: { id: true, businessName: true } },
+    },
+  });
+  if (!m) return { ok: false, error: "Saving the mention failed." };
+
+  await audit("social.mention_captured", {
+    actorId: user.id,
+    entityType: "SocialMention",
+    entityId: m.id,
+    diff: { username, link: linkRaw || null, screenshots: files.length, duplicate: Boolean(existed) },
+  });
+  revalidateSocial(m.influencerId);
+  return {
+    ok: true,
+    mentionId: m.id,
+    username,
+    duplicate: Boolean(existed),
+    influencer: m.influencer,
+    prospect: m.prospect ? { id: m.prospect.id, name: m.prospect.businessName } : null,
+  };
 }

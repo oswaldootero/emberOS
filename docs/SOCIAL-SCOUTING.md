@@ -5,10 +5,27 @@ scraped: Meta only exposes public data for **Business and Creator**
 accounts, and only to an app connected to your own Business account. That
 covers most real influencers and nearly every lounge or shop.
 
-What you get once it's connected:
+## Zero-setup path (start here)
+
+Nothing to configure. When you see that someone tagged or mentioned
+Heaven's Leaf, open **Social Scouting → Capture** (`/social/capture`) and
+either paste the post/profile link (Instagram → ⋯ → Copy link) or drop a
+screenshot of the post, story, or notification. AI reads the handle,
+caption, and like count from the screenshot; the link supplies the
+permalink. The mention lands in the inbox with the same one-click actions
+as automatic ones (add influencer, add prospect, log as post), and it
+auto-links to anyone you already track under that handle.
+
+Everything below this line is **optional** — it only adds automatic
+collection through Meta's API.
+
+---
+
+What you get once Meta is connected:
 
 | Feature | Where | How it works |
 |---|---|---|
+| **Capture** | `/social/capture` | Manual entry from a link and/or screenshots. Works with no setup. |
 | **Mentions inbox** | `/social/mentions` | Every post that tags @heavensleaf, every caption or comment that @mentions you. One click adds the account as an influencer or prospect, or logs it as an influencer post with its likes/comments. |
 | **Handle lookup** | `/social/lookup` | Type a username → followers, following, post count, bio, website, engagement rate, and the last 12 posts. Add as influencer, or refresh an existing one. |
 | **Refresh from Instagram** | influencer profile | Re-pulls follower count, post count, and bio for a tracked influencer (Instagram + handle set). |
