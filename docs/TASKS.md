@@ -65,6 +65,8 @@ use the same pair in Vercel so subscriptions made on production keep working.
    ~10 min) and set `EMAIL_FROM="EmberOS <notifications@yourdomain.com>"`.
    Without a verified domain Resend only delivers to your own account email.
 
+Check what production has configured at `/api/health` (public, no secrets): `push`, `email`, `instagram` booleans plus the live commit.
+
 Both are optional. Missing config is skipped silently and logged in the
 audit trail; the task itself is always created.
 

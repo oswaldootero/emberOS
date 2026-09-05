@@ -9,6 +9,7 @@ const PUBLIC_PATHS = [
   "/auth",
   "/api/cron",
   "/api/webhooks",
+  "/api/health",
   "/sw.js",
   "/swe-worker",
   "/manifest.webmanifest",

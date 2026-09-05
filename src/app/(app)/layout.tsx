@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
+import { SwUpdater } from "@/components/shell/sw-updater";
 import { getCurrentUser } from "@/server/auth";
 
 export default async function AppLayout({
@@ -11,6 +12,7 @@ export default async function AppLayout({
 
   return (
     <div className="relative min-h-screen flex">
+      <SwUpdater />
       <Sidebar isAdmin={user?.role === "ADMIN"} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
