@@ -454,8 +454,10 @@ export async function captureMention(formData: FormData): Promise<CaptureResult>
     return {
       ok: false,
       error: files.length
-        ? "Couldn't find the other account's @handle in the screenshot — type it in the handle field."
-        : "Add the @handle, or a link that includes it, or a screenshot.",
+        ? "Couldn't read the other account's @handle from the screenshot — type it in the handle field."
+        : parsedLink && parsedLink.kind !== "profile"
+          ? "Post links don't include who posted them. Type their @handle (shown at the top of the post) or add a screenshot."
+          : "Enter the @handle of who tagged you, paste their profile link, or add a screenshot.",
     };
   }
   if (username.toLowerCase() === "heavensleaf") {

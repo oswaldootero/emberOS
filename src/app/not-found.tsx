@@ -12,7 +12,7 @@ export default function NotFound() {
           The path you took burns off into smoke. There is no page here.
         </p>
         <Button variant="gold" asChild>
-          <Link href="/dashboard">Return to Mission Control</Link>
+          <Link href="/dashboard">Back to Today</Link>
         </Button>
       </div>
     </div>

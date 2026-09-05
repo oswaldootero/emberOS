@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { newTaskHref } from "@/components/tasks/new-task-button";
+import { CheckSquare } from "lucide-react";
 import {
   addInfluencerFromMention,
   addProspectFromMention,
@@ -207,6 +209,11 @@ function MentionItem({ m }: { m: MentionRow }) {
               <Spinner id="log" icon={Megaphone} /> Log as post
             </Button>
           )}
+          <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+            <Link href={newTaskHref({ title: `Follow up with @${m.username}`, tag: "instagram", ...(m.influencer ? { influencer: m.influencer.id } : m.prospect ? { prospect: m.prospect.id } : {}) })}>
+              <CheckSquare className="h-3.5 w-3.5" /> Task
+            </Link>
+          </Button>
           {m.status === "NEW" && (
             <>
               <Button

@@ -54,6 +54,13 @@ const schema = z.object({
 
   CRON_SECRET: optStr,
   INTERNAL_API_TOKEN: optStr,
+
+  // Notifications — task assignment + due reminders
+  RESEND_API_KEY: optStr,
+  EMAIL_FROM: z.string().default("EmberOS <onboarding@resend.dev>"),
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: optStr,
+  VAPID_PRIVATE_KEY: optStr,
+  VAPID_SUBJECT: z.string().default("mailto:oswaldo@trinityopensolutions.com"),
 });
 
 // IMPORTANT: Next.js only inlines NEXT_PUBLIC_* vars when accessed by literal
@@ -107,6 +114,12 @@ const raw = {
 
   CRON_SECRET: process.env.CRON_SECRET,
   INTERNAL_API_TOKEN: process.env.INTERNAL_API_TOKEN,
+
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  EMAIL_FROM: process.env.EMAIL_FROM,
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+  VAPID_SUBJECT: process.env.VAPID_SUBJECT,
 };
 
 const parsed = schema.safeParse(raw);

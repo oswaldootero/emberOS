@@ -23,6 +23,8 @@ import {
   AtSign,
   ScanSearch,
   Camera,
+  Search,
+  CheckSquare,
 } from "lucide-react";
 
 export type NavChild = {
@@ -52,10 +54,16 @@ export const navigation: NavSection[] = [
     label: "Operations",
     items: [
       {
-        label: "Mission Control",
+        label: "Today",
         href: "/dashboard",
         icon: LayoutDashboard,
-        description: "The cinematic command center",
+        description: "What needs you today + sales pulse",
+      },
+      {
+        label: "Tasks",
+        href: "/tasks",
+        icon: CheckSquare,
+        description: "Assign work, get pinged when it's due",
       },
       {
         label: "AI Content Studio",
@@ -118,7 +126,7 @@ export const navigation: NavSection[] = [
         label: "Social Scouting",
         href: "/social/mentions",
         icon: Radar,
-        description: "Who's tagging you, look up any handle",
+        description: "Find accounts, daily hashtags, who's tagging you",
         children: [
           {
             label: "Mentions inbox",
@@ -129,6 +137,11 @@ export const navigation: NavSection[] = [
             label: "Capture",
             href: "/social/capture",
             icon: Camera,
+          },
+          {
+            label: "Find accounts",
+            href: "/social/find",
+            icon: Search,
           },
           {
             label: "Handle lookup",

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AtSign, Camera, Inbox, Megaphone, ScanSearch, Store } from "lucide-react";
+import { AtSign, Camera, Inbox, Megaphone, Search, Store } from "lucide-react";
 import type { SocialMentionStatus } from "@prisma/client";
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,11 +80,11 @@ export default async function MentionsInboxPage({
       <PageHeader
         eyebrow="Social scouting"
         title="Mentions inbox"
-        description="Everyone who tags or mentions Heaven's Leaf on Instagram — your warmest leads, in one feed."
+        description="Your running list of accounts that tagged or mentioned Heaven's Leaf. Review each one and turn it into an influencer to seed, a lounge or shop to prospect, or a logged post."
       >
         <Button variant="outline" size="sm" asChild>
-          <Link href="/social/lookup">
-            <ScanSearch className="h-4 w-4" /> Handle lookup
+          <Link href="/social/find">
+            <Search className="h-4 w-4" /> Find accounts
           </Link>
         </Button>
         <SyncMentionsButton configured={configured} />
@@ -97,11 +97,12 @@ export default async function MentionsInboxPage({
 
       {!configured && (
         <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-4 text-sm text-ivory space-y-1">
-          <div className="font-medium">Manual mode.</div>
+          <div className="font-medium">How this works</div>
           <p className="text-xs text-muted-foreground">
-            Instagram isn&apos;t connected, so use <Link href="/social/capture" className="text-ember-200 hover:underline">Capture</Link> whenever
-            someone tags you: paste the link or drop a screenshot. Automatic sync is optional and documented
-            in <span className="font-mono">docs/SOCIAL-SCOUTING.md</span>.
+            When you notice someone tagged Heaven&apos;s Leaf, hit <Link href="/social/capture" className="text-ember-200 hover:underline">Capture</Link> and
+            enter their @handle (a screenshot works too). It shows up here. Then decide: <strong className="text-ivory">Add influencer</strong> if
+            they&apos;re a personality worth seeding cigars, <strong className="text-ivory">Add prospect</strong> if they&apos;re a lounge or shop
+            to sell to, or <strong className="text-ivory">Log as post</strong> when a tracked influencer posted about you. Dismiss the rest.
           </p>
         </div>
       )}

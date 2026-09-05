@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NewTaskButton } from "@/components/tasks/new-task-button";
 import { IcpScoreBadge, ScoreBadge, VerdictBadge } from "@/components/prospects/score-badge";
 import { IcpCard, type IcpDetails } from "@/components/prospects/icp-card";
 import { ProspectProfileActions } from "@/components/prospects/prospect-profile-actions";
@@ -91,11 +92,14 @@ export default async function ProspectDetailPage({
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" asChild className="text-muted-foreground -ml-2">
-        <Link href="/prospects">
-          <ArrowLeft className="h-4 w-4" /> All prospects
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between gap-3">
+        <Button variant="ghost" size="sm" asChild className="text-muted-foreground -ml-2">
+          <Link href="/prospects">
+            <ArrowLeft className="h-4 w-4" /> All prospects
+          </Link>
+        </Button>
+        <NewTaskButton ctx={{ prospect: p.id, title: `Follow up with ${p.businessName}`, tag: "prospecting" }} label="Assign a follow-up" />
+      </div>
 
       {/* Header */}
       <div className="rounded-xl border border-white/[0.06] bg-ink-900/40 p-5 space-y-4">

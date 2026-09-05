@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NewTaskButton } from "@/components/tasks/new-task-button";
 import { InfluencerStageBadge, fmtFollowers } from "@/components/influencers/stage-badge";
 import { InfluencerProfileActions } from "@/components/influencers/influencer-profile-actions";
 import { RefreshFromInstagram } from "@/components/influencers/refresh-from-instagram";
@@ -97,11 +98,14 @@ export default async function InfluencerDetailPage({
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" asChild className="text-muted-foreground -ml-2">
-        <Link href="/influencers">
-          <ArrowLeft className="h-4 w-4" /> All influencers
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between gap-3">
+        <Button variant="ghost" size="sm" asChild className="text-muted-foreground -ml-2">
+          <Link href="/influencers">
+            <ArrowLeft className="h-4 w-4" /> All influencers
+          </Link>
+        </Button>
+        <NewTaskButton ctx={{ influencer: inf.id, title: `Check in with ${inf.name}`, tag: "influencer" }} />
+      </div>
 
       {/* Header */}
       <div className="rounded-xl border border-white/[0.06] bg-ink-900/40 p-5 space-y-4">

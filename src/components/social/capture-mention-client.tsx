@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { compressImage } from "@/lib/compress-image";
+import { cleanInstagramHandle, parseInstagramUrl } from "@/server/social/instagram";
 import { captureMention, type CaptureResult } from "@/server/actions/social";
 
 type Done = Extract<CaptureResult, { ok: true }>;
@@ -32,7 +33,17 @@ export function CaptureMentionClient() {
     e.target.value = "";
   }
 
-  const canSubmit = Boolean(link.trim() || handle.trim() || previews.length);
+  // A profile link carries the handle; a post link does not (instagram.com/p/CODE).
+  const linkInfo = link.trim() ? parseInstagramUrl(link) : null;
+  const linkHasHandle = Boolean(linkInfo && "handle" in linkInfo && linkInfo.handle);
+  const linkIsBad = Boolean(link.trim() && !linkInfo);
+  const canSubmit = Boolean(cleanInstagramHandle(handle) || linkHasHandle || previews.length) && !linkIsBad;
+
+  function onLinkChange(v: string) {
+    setLink(v);
+    const info = v.trim() ? parseInstagramUrl(v) : null;
+    if (info && "handle" in info && info.handle && !handle.trim()) setHandle(info.handle);
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,39 +110,66 @@ export function CaptureMentionClient() {
 
   return (
     <form onSubmit={submit} className="space-y-5">
+      <div className="rounded-lg border border-white/[0.06] bg-ink-900/40 p-4 text-xs text-muted-foreground space-y-1.5">
+        <div className="text-sm text-ivory font-medium">How this works</div>
+        <p>
+          Someone posts a photo, story, or comment that tags Heaven&apos;s Leaf. You save who it was
+          here — <strong className="text-ivory">the @handle is all that&apos;s required</strong>. The link and a
+          screenshot are optional extras that keep the post and its like count on file.
+        </p>
+        <p>
+          Every capture lands in the <Link href="/social/mentions" className="text-ember-200 hover:underline">Mentions inbox</Link>,
+          where one tap turns that account into an influencer to seed, or a lounge/shop prospect.
+        </p>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Link2 className="h-4 w-4 text-ember-300" /> Link or handle
+            <Link2 className="h-4 w-4 text-ember-300" /> Who tagged you
           </CardTitle>
           <CardDescription>
-            In Instagram: tap the ⋯ on the post → <strong>Copy link</strong>, then paste here. A profile
-            link or just the @handle works too.
+            Their @handle is shown at the top of the post. If you paste a <em>profile</em> link, the handle
+            fills in by itself. A <em>post</em> link (instagram.com/p/…) doesn&apos;t include who posted it, so
+            type the handle or add a screenshot.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input
-            value={link}
-            onChange={(e) => setLink(e.target.value)}
-            placeholder="https://www.instagram.com/p/…  or  instagram.com/handle"
-            inputMode="url"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">@handle · required unless you add a screenshot</label>
             <Input
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
-              placeholder="@handle of who tagged you (if the link lacks it)"
+              placeholder="@cigarloungetampa"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
+              className="mt-1"
             />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Link to the post or profile · optional</label>
+            <Input
+              value={link}
+              onChange={(e) => onLinkChange(e.target.value)}
+              placeholder="In Instagram: ⋯ on the post → Copy link → paste here"
+              inputMode="url"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="mt-1"
+            />
+            {linkIsBad && (
+              <p className="mt-1 text-[11px] text-amber-300">That doesn&apos;t look like an Instagram link.</p>
+            )}
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Note · optional</label>
             <Input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Optional note — “lounge in Tampa”, “asked about wholesale”"
+              placeholder="“lounge in Tampa”, “asked about wholesale”"
+              className="mt-1"
             />
           </div>
         </CardContent>
@@ -144,8 +182,8 @@ export function CaptureMentionClient() {
             <span className="text-xs font-normal text-muted-foreground">optional</span>
           </CardTitle>
           <CardDescription>
-            Up to 3 — the post, the story, or the notification. AI reads the handle, caption,
-            and like count so you don&apos;t have to type them.
+            Up to 3 — the post, the story, or the notification. AI reads the @handle, caption, and
+            like count, so with a screenshot you can leave the fields above empty.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -196,6 +234,11 @@ export function CaptureMentionClient() {
         </CardContent>
       </Card>
 
+      {!canSubmit && !pending && (
+        <p className="text-[11px] text-muted-foreground text-center">
+          Enter the @handle, paste a profile link, or add a screenshot to continue.
+        </p>
+      )}
       <Button type="submit" variant="gold" className="w-full" disabled={!canSubmit || pending}>
         {pending ? (
           <>

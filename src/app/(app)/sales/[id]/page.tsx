@@ -7,6 +7,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { NewTaskButton } from "@/components/tasks/new-task-button";
 import { SaleStatusBadge } from "@/components/sales/status-badge";
 import { SaleActions } from "@/components/sales/sale-actions";
 import { requireUser } from "@/server/auth";
@@ -30,6 +31,9 @@ const fmtDate = (d: Date | null) =>
         year: "numeric",
       })
     : "—";
+
+const fmtMoney = (v: number) =>
+  Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
 
 export default async function SaleDetailPage({
   params,
@@ -55,13 +59,21 @@ export default async function SaleDetailPage({
             <ArrowLeft className="h-4 w-4" /> All invoices
           </Link>
         </Button>
-        {editable && (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/sales/${sale.id}/edit`}>
-              <Edit3 className="h-4 w-4" /> Edit
-            </Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {balanceDue > 0 && (
+            <NewTaskButton
+              ctx={{ sale: sale.id, title: `Collect ${fmtMoney(balanceDue)} from ${sale.customer.businessName} (${sale.invoiceNumber})`, tag: "collections" }}
+              label="Assign collection"
+            />
+          )}
+          {editable && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/sales/${sale.id}/edit`}>
+                <Edit3 className="h-4 w-4" /> Edit
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Invoice document */}

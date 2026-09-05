@@ -10,7 +10,8 @@ A cinematic AI-powered media operating system for **Heaven's Leaf** — a premiu
 
 | Area | What it does |
 | --- | --- |
-| **Mission Control** | Cinematic dashboard — scheduled queue, engagement chart, channel health, brotherhood pulse. |
+| **Tasks** | Assign work to a teammate with a due date; push notification (PWA) + email on assignment and a morning due-list. Create from any prospect, customer, invoice, influencer, or mention. See `docs/TASKS.md`. |
+| **Today** | Ranked to-do board (collections, follow-ups, reorders, mentions, low stock) + sales pulse (revenue, outstanding, pipeline, top customers) + the day's hashtag. |
 | **AI Content Studio** | Streaming OpenAI generation with brand-voice memory, four tone sliders, ten content types, real-time shadowban scoring. |
 | **Repurpose Engine** | One source → IG, FB, Telegram, X, YouTube, SEO article, email, hashtags, pull quotes, reel hooks. |
 | **Telegram Command** | Brotherhood Bot with daily reflections, cigar check-ins, scripture prompts, FAQ, welcome flow. |
@@ -309,6 +310,7 @@ The Prisma `User.role` enum supports four roles:
 
 - [Analytics CSV Import Guide](docs/ANALYTICS-IMPORT.md) — how to export from GA4, Search Console, Meta Business Suite, and YouTube, then feed it to EmberOS for AI-driven insights
 - [UI/UX Guidelines](docs/UI-GUIDELINES.md) — theming, layout, mobile, date handling, and interaction conventions every new module must follow
+- [Tasks & notifications](docs/TASKS.md) — assignable tasks, PWA push + Resend email setup, daily reminders
 - [Social Scouting](docs/SOCIAL-SCOUTING.md) — Meta app setup walkthrough for the Instagram mentions inbox, handle lookup, and webhook
 
 ---

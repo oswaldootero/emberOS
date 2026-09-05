@@ -7,8 +7,8 @@
       "schedule": "0 14 * * *"
     },
     {
-      "path": "/api/cron/social-sync",
-      "schedule": "0 15 * * *"
+      "path": "/api/cron/daily-jobs",
+      "schedule": "0 11 * * *"
     }
   ],
   "functions": {
@@ -18,6 +18,6 @@
     "src/app/api/ai/insights/route.ts": { "maxDuration": 60 },
     "src/app/api/ai/daily-intentions/route.ts": { "maxDuration": 60 },
     "src/app/api/cron/daily-reflection/route.ts": { "maxDuration": 90 },
-    "src/app/api/cron/social-sync/route.ts": { "maxDuration": 60 }
+    "src/app/api/cron/daily-jobs/route.ts": { "maxDuration": 60 }
   }
 }

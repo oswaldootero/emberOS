@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NewTaskButton } from "@/components/tasks/new-task-button";
 import {
   Card,
   CardContent,
@@ -194,6 +195,7 @@ export function CustomerTabs({
             <Button variant="outline" size="sm" asChild>
               <Link href={`/crm/${customer.id}/edit`}>Edit</Link>
             </Button>
+            <NewTaskButton ctx={{ customer: customer.id, title: `Follow up with ${customer.businessName}`, tag: "customer" }} />
             <Button
               variant="ghost"
               size="sm"

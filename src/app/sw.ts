@@ -35,3 +35,40 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// ── Web push (tasks) ──────────────────────────────────────────────
+// Payload: { title, body, url, tag } — see src/server/notifications/push.ts
+self.addEventListener("push", (event) => {
+  let data: { title?: string; body?: string; url?: string; tag?: string } = {};
+  try {
+    data = event.data?.json() ?? {};
+  } catch {
+    data = { body: event.data?.text() ?? "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title ?? "EmberOS", {
+      body: data.body ?? "",
+      icon: "/icons/192",
+      badge: "/icons/192",
+      tag: data.tag,
+      data: { url: data.url ?? "/dashboard" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url: string = event.notification.data?.url ?? "/dashboard";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const target = new URL(url, self.location.origin).href;
+      for (const c of clients) {
+        if ("focus" in c) {
+          c.navigate?.(target);
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
+});

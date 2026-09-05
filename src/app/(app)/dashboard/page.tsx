@@ -1,335 +1,150 @@
 import Link from "next/link";
-import {
-  CalendarClock,
-  Database,
-  FileSpreadsheet,
-  FileText,
-  Flame,
-  Send,
-  Sparkles,
-  Target,
-  TrendingUp,
-  UploadCloud,
-  Users,
-} from "lucide-react";
+import { AlertTriangle, CalendarClock, Package, Plus, Receipt, Target, Wallet } from "lucide-react";
+import { NewTaskButton } from "@/components/tasks/new-task-button";
+import { PushToggle } from "@/components/notifications/push-toggle";
+import { env } from "@/lib/env";
 import { PageHeader } from "@/components/shell/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { EngagementChart } from "@/components/dashboard/engagement-chart";
-import { UpcomingQueue } from "@/components/dashboard/upcoming-queue";
+import { TodayActions } from "@/components/dashboard/today-actions";
+import { RevenueBars } from "@/components/dashboard/revenue-bars";
+import { PipelineStages } from "@/components/dashboard/pipeline-stages";
+import { HashtagToday } from "@/components/dashboard/hashtag-today";
 import { DailyIntentions } from "@/components/dashboard/daily-intentions";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { getDashboardSnapshot } from "@/server/dashboard";
-import { prisma } from "@/lib/prisma";
-import { icpTier } from "@/lib/icp";
-import { StageBadge } from "@/components/prospects/score-badge";
-import { cn } from "@/lib/utils";
+import { requireUser } from "@/server/auth";
+import { loadTodayBoard } from "@/server/dashboard";
 
+export const metadata = { title: "Today" };
 export const dynamic = "force-dynamic";
 
+const fmtUsd = (v: number) =>
+  Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+
 export default async function DashboardPage() {
-  const [snapshot, topProspects] = await Promise.all([
-    getDashboardSnapshot(),
-    prisma.prospect.findMany({
-      where: { archivedAt: null, customerId: null, icpScore: { not: null } },
-      orderBy: [{ icpScore: "desc" }, { updatedAt: "desc" }],
-      take: 5,
-      select: {
-        id: true,
-        businessName: true,
-        city: true,
-        state: true,
-        stage: true,
-        icpScore: true,
-        assignedTo: { select: { fullName: true, email: true } },
-      },
-    }),
-  ]);
+  const user = await requireUser();
+  const board = await loadTodayBoard(user.id);
+  const firstName = (user.fullName ?? user.email ?? "").split(/[\s@]/)[0] || "there";
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const k = board.kpis;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
-        eyebrow="Mission Control"
-        title="The fire is steady."
-        description="A premium media operating system for brotherhood, ritual, and slow living."
+        eyebrow={today}
+        title={`What needs you today, ${firstName}.`}
+        description="Collections, follow-ups, reorders, mentions, and stock — ranked. Then the sales pulse."
       >
+        <NewTaskButton />
         <Button variant="gold" size="sm" asChild>
-          <a href="/studio">
-            <Sparkles className="h-4 w-4" /> New Generation
-          </a>
+          <Link href="/sales/new">
+            <Plus className="h-4 w-4" /> New invoice
+          </Link>
         </Button>
       </PageHeader>
 
-      {/* Today's intentions — boutique-cigar gap analysis */}
-      <DailyIntentions />
+      <PushToggle publicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} compact />
 
-      {/* Hero quote */}
-      <Card className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-ember-glow opacity-60" />
-        <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-ember-500/10 blur-3xl" />
-        <CardContent className="relative p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start md:items-center">
-          <Flame className="h-10 w-10 text-ember-300 shrink-0" />
-          <div className="flex-1 space-y-2">
-            <p className="font-display text-xl md:text-2xl text-ivory tracking-tight italic">
-              "Brothers don't gather for the cigar — they gather for the silence
-              between the draws."
-            </p>
-            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-              EmberOS · Brand Voice
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Real-data KPIs */}
+      {/* Sales pulse */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Scheduled"
-          value={snapshot.stats.scheduledCount}
-          icon={CalendarClock}
-          hint="Posts in the queue"
+          label="Invoiced this month"
+          value={fmtUsd(k.revenueThisMonth)}
+          delta={k.revenueDeltaPct ?? undefined}
+          icon={Receipt}
+          hint={k.revenueDeltaPct == null ? "No invoices last month to compare" : "vs. last month"}
         />
         <StatCard
-          label="Content library"
-          value={snapshot.stats.totalContent}
-          icon={FileText}
-          hint="All-time pieces created"
+          label="Outstanding"
+          value={fmtUsd(k.outstanding)}
+          icon={Wallet}
+          hint={k.overdueCount > 0 ? `${fmtUsd(k.overdueAmount)} overdue on ${k.overdueCount} invoice${k.overdueCount === 1 ? "" : "s"}` : "Nothing overdue"}
         />
         <StatCard
-          label="AI generations (7d)"
-          value={snapshot.stats.aiJobsRecent}
-          icon={Sparkles}
-          hint="Studio + Repurpose + Image"
+          label="Open prospects"
+          value={k.openProspects}
+          icon={Target}
+          hint="In the pipeline, not yet customers"
         />
         <StatCard
-          label="Brotherhood"
-          value={snapshot.stats.telegramMembers}
-          icon={Users}
-          hint={
-            snapshot.stats.telegramMsgs > 0
-              ? `${snapshot.stats.telegramMsgs} messages this week`
-              : "Connect Telegram bot to populate"
-          }
+          label="Low stock"
+          value={k.lowStockCount}
+          icon={k.lowStockCount > 0 ? AlertTriangle : Package}
+          hint={k.lowStockCount > 0 ? "SKUs at or below reorder threshold" : "All SKUs above threshold"}
         />
       </div>
 
-      {/* Top prospects by ICP */}
-      {topProspects.length > 0 && (
+      {/* Do today + right rail */}
+      <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-ember-300" />
-                Top Prospects
-              </CardTitle>
-              <CardDescription>
-                Highest ICP scores still waiting on a first order.
-              </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/prospects?sort=icpScore%3Adesc">View all</Link>
-            </Button>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-ember-300" /> Do today
+            </CardTitle>
+            <CardDescription>
+              Your tasks plus everything with a date or a dollar attached, most urgent first. Tap a row to act on it.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="divide-y divide-white/[0.04]">
-            {topProspects.map((p) => {
-              const tier = icpTier(p.icpScore!);
-              return (
-                <div key={p.id} className="py-2.5 flex items-center gap-3">
-                  <span
-                    className={cn(
-                      "inline-flex items-center justify-center h-7 w-9 rounded-md text-xs font-semibold tabular-nums border shrink-0",
-                      tier.badgeClass,
-                    )}
-                  >
-                    {p.icpScore}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/prospects/${p.id}`}
-                      className="text-sm text-ivory hover:text-ember-200 truncate block"
-                    >
-                      {p.businessName}
-                    </Link>
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      <span className={tier.textClass}>{tier.rating}</span>
-                      {[p.city, p.state].filter(Boolean).length > 0 &&
-                        ` · ${[p.city, p.state].filter(Boolean).join(", ")}`}
-                      {p.assignedTo &&
-                        ` · ${p.assignedTo.fullName ?? p.assignedTo.email}`}
-                    </div>
-                  </div>
-                  <div className="hidden sm:block shrink-0">
-                    <StageBadge stage={p.stage} />
-                  </div>
-                </div>
-              );
-            })}
+          <CardContent className="pt-0">
+            <TodayActions items={board.actions} overflow={board.actionOverflow} />
           </CardContent>
         </Card>
-      )}
 
-      {/* Engagement + Queue */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-ember-300" />
-                Engagement & Reach
-              </CardTitle>
-              <CardDescription>
-                {snapshot.engagementSource === "imports"
-                  ? "Daily totals from your imported Meta data."
-                  : "No imports yet — upload an Instagram or Facebook Content CSV to populate."}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge
-                variant={
-                  snapshot.engagementSource === "imports" ? "success" : "outline"
-                }
-                className="text-[10px]"
-              >
-                {snapshot.engagementSource === "imports" ? "live" : "no data"}
-              </Badge>
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-ember-300" />
-                  Engagement
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-tobacco-400" />
-                  Reach
-                </span>
-              </div>
-            </div>
+        <div className="space-y-6">
+          <HashtagToday initial={board.hashtagBrief} />
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Prospect pipeline</CardTitle>
+              <CardDescription>Open prospects by stage.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PipelineStages data={board.pipeline} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Revenue + top customers */}
+      <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Invoiced revenue</CardTitle>
+            <CardDescription>Last six months, all invoices except drafts and cancellations.</CardDescription>
           </CardHeader>
           <CardContent>
-            {snapshot.engagementSource === "imports" ? (
-              <EngagementChart data={snapshot.engagementSeries} />
+            <RevenueBars data={board.revenueByMonth} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Top customers this month</CardTitle>
+            <CardDescription>By invoiced total.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {board.topCustomersThisMonth.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No invoices yet this month.</p>
             ) : (
-              <EmptyEngagement />
+              <ul className="divide-y divide-white/[0.04]">
+                {board.topCustomersThisMonth.map((c, i) => (
+                  <li key={c.id} className="py-2 flex items-center gap-3 text-sm">
+                    <span className="w-5 text-[10px] text-muted-foreground tabular-nums">{i + 1}</span>
+                    <Link href={`/crm/${c.id}`} className="flex-1 min-w-0 truncate text-ivory hover:text-ember-200">
+                      {c.name}
+                    </Link>
+                    <span className="text-[10px] text-muted-foreground tabular-nums hidden sm:inline">
+                      {c.invoices} inv
+                    </span>
+                    <span className="text-ember-200 tabular-nums">{fmtUsd(c.revenue)}</span>
+                  </li>
+                ))}
+              </ul>
             )}
           </CardContent>
         </Card>
-
-        <UpcomingQueue items={snapshot.queue} />
       </div>
 
-      {/* Channels At A Glance — REAL DATA ONLY */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Channels At A Glance</CardTitle>
-            <CardDescription>
-              Live numbers from your imports, WordPress, and Telegram. Dashes
-              mean nothing imported yet.
-            </CardDescription>
-          </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/analytics/import">
-              <UploadCloud className="h-4 w-4" /> Import data
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {snapshot.channels.map((c) => (
-              <ChannelTile key={c.name} channel={c} />
-            ))}
-          </div>
-          <Separator className="my-6" />
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <Send className="h-3.5 w-3.5 text-ember-300" />
-            Bot: <code className="font-mono text-ember-200/80">@HeavensLeafBrotherhoodBot</code>
-            <span className="opacity-50">·</span>
-            <span>{snapshot.stats.scheduledCount} posts queued</span>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function ChannelTile({
-  channel,
-}: {
-  channel: {
-    name: string;
-    value: string;
-    subtitle: string;
-    source: "live" | "import" | "demo";
-    healthy: boolean;
-  };
-}) {
-  const tone =
-    channel.source === "live"
-      ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
-      : channel.source === "import"
-        ? "bg-ember-500/10 text-ember-200 border-ember-500/20"
-        : "bg-white/[0.02] text-muted-foreground border-white/[0.04]";
-
-  return (
-    <div
-      className={cn(
-        "rounded-lg border bg-ink-900/40 p-4 space-y-2",
-        channel.source === "live"
-          ? "border-white/[0.04]"
-          : channel.source === "import"
-            ? "border-white/[0.04]"
-            : "border-dashed border-white/[0.06]",
-      )}
-    >
-      <div className="flex items-center justify-between">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">
-          {channel.name}
-        </div>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${tone}`}
-        >
-          {channel.source === "live" ? (
-            <>
-              <Database className="h-2.5 w-2.5" /> live
-            </>
-          ) : channel.source === "import" ? (
-            <>
-              <FileSpreadsheet className="h-2.5 w-2.5" /> import
-            </>
-          ) : (
-            "—"
-          )}
-        </span>
-      </div>
-      <div className="font-display text-2xl text-ivory tabular-nums">
-        {channel.value}
-      </div>
-      <div className="text-[11px] text-muted-foreground">{channel.subtitle}</div>
-    </div>
-  );
-}
-
-function EmptyEngagement() {
-  return (
-    <div className="h-[260px] flex flex-col items-center justify-center text-center space-y-2">
-      <UploadCloud className="h-7 w-7 text-ember-300/50" />
-      <div className="text-sm text-muted-foreground max-w-sm">
-        Upload an Instagram or Facebook Content insights CSV from{" "}
-        <Link
-          href="/analytics/guide"
-          className="text-ember-300 underline-offset-2 hover:underline"
-        >
-          the guide
-        </Link>{" "}
-        and this chart fills with your real engagement.
-      </div>
+      {/* AI content ideas for the day */}
+      <DailyIntentions />
     </div>
   );
 }
