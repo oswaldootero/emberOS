@@ -154,14 +154,14 @@ Open <http://localhost:3000>. You'll be redirected to `/login`. Sign in via magi
 2. **Import the repo into Vercel.**
 3. Add **all** required env vars from `.env.example` to Vercel → Project → Settings → Environment Variables.
 4. Set `NEXT_PUBLIC_APP_URL` to your Vercel URL (or custom domain).
-5. Deploy. `npm run build` runs `prisma generate`, then `prisma migrate deploy`, then `next build`, so pending migrations are applied on every deploy.
+5. Deploy. `npm run build` runs `prisma generate` then `next build`. Migrations are **not** applied during the Vercel build (the build machines can't reliably reach the database) — after pushing a schema change, run `npm run db:deploy` from your machine.
 
 ### Migrations
 
 Schema changes go through Prisma Migrate — never `prisma db push` against production.
 
 - `npm run db:migrate` — after editing `schema.prisma`, creates a migration in `prisma/migrations/` and applies it locally.
-- `npm run db:deploy` — applies pending migrations (this is what the Vercel build runs).
+- `npm run db:deploy` — applies pending migrations to the database in `.env.local`. Run it after every push that includes a new migration.
 - `npm run db:status` — shows which migrations the database has applied.
 
 All `db:*` scripts load `.env.local` for you (Prisma's CLI only reads `.env` on its own), so run them from the project folder in a terminal.
@@ -292,13 +292,13 @@ The Prisma `User.role` enum supports four roles:
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Local dev server |
-| `npm run build` | Production build (`prisma generate` → `prisma migrate deploy` → `next build`) |
+| `npm run build` | Production build (`prisma generate` → `next build`) |
 | `npm run lint` | ESLint (flat config, Next + TypeScript rules) |
 | `npm run typecheck` | TypeScript no-emit check |
 | `npm run test` | Vitest unit tests (`src/**/*.test.ts`) |
 | `npm run db:status` | Show applied / pending migrations |
 | `npm run db:baseline` | One-time: mark the baseline migration as already applied |
-| `npm run db:deploy` | Apply pending migrations (Vercel build runs the same thing) |
+| `npm run db:deploy` | Apply pending migrations (run after pushing a schema change) |
 | `npm run db:migrate` | Create + apply a migration locally |
 | `npm run db:seed` | Seed brand voice, templates, sample workflow |
 | `npm run db:studio` | Open Prisma Studio |
