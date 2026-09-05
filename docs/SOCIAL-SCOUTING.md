@@ -33,8 +33,8 @@ What you get once Meta is connected:
 
 How mentions arrive:
 
-- **Photo/video tags** — polled from the `/tags` edge every 6 hours by the
-  `/api/cron/social-sync` Vercel cron, or on demand with **Sync now**.
+- **Photo/video tags** — polled from the `/tags` edge once a day by the
+  `/api/cron/social-sync` Vercel cron (Vercel's Hobby plan allows daily crons only), or on demand with **Sync now**.
 - **Caption and comment @mentions** — pushed instantly by Meta to the
   webhook at `/api/webhooks/meta` (the `mentions` field). Meta has no
   polling endpoint for these, so the webhook is required.

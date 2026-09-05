@@ -142,7 +142,7 @@ export default async function MentionsInboxPage({
               <p className="text-sm text-muted-foreground">
                 {status === "NEW"
                   ? configured
-                    ? "Nothing new. Tags arrive on the six-hour sync or with Sync now; caption and comment mentions arrive instantly by webhook."
+                    ? "Nothing new. Tags arrive on the daily sync or with Sync now; caption and comment mentions arrive instantly by webhook."
                     : "Nothing captured yet. Next time someone tags Heaven's Leaf, hit Capture and paste the link or a screenshot."
                   : "No mentions match this filter."}
               </p>
