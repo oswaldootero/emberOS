@@ -7,6 +7,7 @@ import {
 } from "@/server/ai/telegram-reflection";
 import { sendMessage } from "@/server/integrations/telegram";
 import { audit } from "@/server/audit";
+import { sendDailyMotivation } from "@/server/notifications/motivation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,10 @@ export const maxDuration = 120;
  * So the founder always has a weekly view of upcoming reflections to
  * approve or skip — and once approved, drafts auto-fire on their day
  * without a second click.
+ *
+ *  3) FUEL: pushes today's motivational quote to everyone who has it on
+ *     (14:00 UTC = 7am Pacific; Vercel Hobby allows only two daily crons,
+ *     so it rides along here rather than on its own schedule).
  */
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -35,11 +40,19 @@ export async function GET(req: NextRequest) {
   // ── 2. Top up to 7 days ahead ────────────────────────────────
   const created = await topUpDrafts(7);
 
+  // ── 3. Daily motivation push ─────────────────────────────────
+  let motivation: unknown;
+  try {
+    motivation = await sendDailyMotivation();
+  } catch (e) {
+    motivation = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   await audit("cron.daily_telegram", {
-    diff: { fired, created },
+    diff: { fired, created, motivation },
   });
 
-  return Response.json({ ok: true, fired, created });
+  return Response.json({ ok: true, fired, created, motivation });
 }
 
 /**

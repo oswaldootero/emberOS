@@ -215,6 +215,7 @@ model User {
   role            Role     @default(CONTENT_CREATOR)
   bio             String?
   timezone        String   @default("America/Los_Angeles")
+  dailyMotivation Boolean  @default(true)
   lastSeenAt      DateTime?
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())

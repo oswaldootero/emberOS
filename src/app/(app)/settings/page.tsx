@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bell, Plug } from "lucide-react";
 import { PushToggle } from "@/components/notifications/push-toggle";
+import { TestEmailButton } from "@/components/notifications/test-email-button";
+import { MotivationSettings } from "@/components/notifications/motivation-settings";
+import { requireUser } from "@/server/auth";
 
 export const metadata = { title: "Settings" };
 
@@ -30,7 +33,8 @@ function isSet(key: string) {
   return Boolean(process.env[key]);
 }
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const user = await requireUser();
   return (
     <div className="space-y-8">
       <PageHeader
@@ -49,10 +53,26 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <PushToggle publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
-          {!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && (
-            <p className="text-xs text-muted-foreground">Push isn&apos;t configured yet — add the VAPID keys (see docs/TASKS.md).</p>
-          )}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Push</div>
+              <PushToggle publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
+              {!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && (
+                <p className="text-xs text-muted-foreground">Push isn&apos;t configured yet — add the VAPID keys (see docs/TASKS.md).</p>
+              )}
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Email</div>
+              <TestEmailButton configured={Boolean(process.env.RESEND_API_KEY)} />
+            </div>
+          </div>
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Daily fuel</div>
+            <MotivationSettings
+              enabled={user.dailyMotivation}
+              pushConfigured={Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)}
+            />
+          </div>
         </CardContent>
       </Card>
 

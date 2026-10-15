@@ -10,6 +10,8 @@ import { RevenueBars } from "@/components/dashboard/revenue-bars";
 import { PipelineStages } from "@/components/dashboard/pipeline-stages";
 import { HashtagToday } from "@/components/dashboard/hashtag-today";
 import { DailyIntentions } from "@/components/dashboard/daily-intentions";
+import { DailyQuote } from "@/components/dashboard/daily-quote";
+import { quoteForDay } from "@/server/motivation/pick";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/server/auth";
@@ -44,6 +46,8 @@ export default async function DashboardPage() {
       </PageHeader>
 
       <PushToggle publicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} compact />
+
+      <DailyQuote quote={quoteForDay()} />
 
       {/* Sales pulse */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

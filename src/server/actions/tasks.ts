@@ -162,3 +162,18 @@ export async function sendTestPush(): Promise<TaskResult<{ sent: number }>> {
   if (r.sent === 0) return { ok: false, error: "No devices are subscribed on this account yet." };
   return { ok: true, sent: r.sent };
 }
+
+export async function sendTestEmail(): Promise<TaskResult<{ to: string }>> {
+  const user = await requireUser();
+  const { emailConfigured, emailLayout, sendEmail } = await import("@/server/notifications/email");
+  if (!emailConfigured()) return { ok: false, error: "Email isn't configured — add RESEND_API_KEY." };
+  const { html, text } = emailLayout({
+    heading: "EmberOS email is working",
+    lines: ["This is a test from the Settings page.", "Task assignments and the morning due-list will arrive like this."],
+    ctaLabel: "Open EmberOS",
+    ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/tasks`,
+  });
+  const r = await sendEmail({ to: user.email, subject: "EmberOS test email", html, text });
+  if (!r.ok) return { ok: false, error: `Resend rejected it: ${r.error}` };
+  return { ok: true, to: user.email };
+}

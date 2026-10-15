@@ -35,6 +35,25 @@ assignee gets:
 Every morning (the `daily-jobs` cron, 11:00 UTC / 7am ET) each assignee
 with tasks due today or overdue gets one push and one email listing them.
 
+### Daily fuel (motivational push)
+
+Every morning at 14:00 UTC / 7am Pacific (rides on the `daily-reflection`
+cron, since Vercel Hobby allows only two daily crons) everyone who has
+notifications enabled gets one push with a quote: coaches and athletes,
+pastors and scripture, sales and business builders. Dolphins and Hurricanes
+voices are slotted in every fourth day. The same quote shows on the Today
+board, with a copy button for sharing into group chats.
+
+- Quotes are hand-curated in `src/server/motivation/quotes.ts` (add or prune
+  there — keep lines under ~160 chars). Mark a quote `team: "dolphins"` or
+  `"hurricanes"` to put it in the home-team slot.
+- The pick is deterministic per calendar day (`src/server/motivation/pick.ts`):
+  a seeded shuffle of the bank, so everyone sees the same line and nothing
+  repeats until the whole rotation has run.
+- Per-user opt-out: **Settings → Daily fuel** toggle (`User.dailyMotivation`,
+  default on). **Send me today's quote** fires it to your devices now.
+- Push only, no email.
+
 ### Enabling push on a device
 
 1. Open EmberOS in the browser, or — on iPhone — first **Share → Add to
@@ -78,6 +97,7 @@ audit trail; the task itself is always created.
 | Loaders (list, context, Today rows) | `src/server/tasks.ts` |
 | Server actions (CRUD, push subscriptions, test push) | `src/server/actions/tasks.ts` |
 | Notifications: email (Resend), push (web-push), task notify + reminders | `src/server/notifications/*` |
+| Daily fuel: quote bank, picker, sender, settings toggle | `src/server/motivation/*`, `src/server/notifications/motivation.ts`, `src/server/actions/motivation.ts`, `src/components/notifications/motivation-settings.tsx`, `src/components/dashboard/daily-quote.tsx` |
 | Pages and components | `src/app/(app)/tasks/**`, `src/components/tasks/*`, `src/components/notifications/push-toggle.tsx` |
 | Service worker push handlers | `src/app/sw.ts` |
 | Daily cron (reminders + hashtag brief + Instagram tags) | `src/app/api/cron/daily-jobs/route.ts` |
